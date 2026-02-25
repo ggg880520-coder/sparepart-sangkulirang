@@ -242,6 +242,12 @@
     function normHeader(h) {
       return String(h ?? "").toUpperCase().replace(/[^A-Z0-9]+/g, "");
     }
+
+      function clearLoginInputs() {
+      $("email").value = "";
+      $("password").value = "";
+    }
+
     function toISODate(v) {
       if (!v) return null;
       if (v instanceof Date && !isNaN(v.getTime())) return v.toISOString().slice(0,10);
@@ -327,7 +333,8 @@
 
         $("authBadge").textContent = "Login: " + (data.user?.email || email);
         $("btnLogout").classList.remove("hidden");
-        log("Login sukses ✅ (data akan load di background)");
+        log("Login sukses ✅");
+        clearLoginInputs();
 
         // background tasks
         refreshAuthUI();
@@ -353,10 +360,35 @@
       await refreshAuthUI();
     });
 
+    async function signOutWithRetry(tries = 3, delayMs = 600) {
+      for (let i = 0; i < tries; i++) {
+        try {
+          // coba revoke + signout normal dulu
+          const res = await sb.auth.signOut({ scope: "global" });
+          if (res.error) throw res.error;
+          return { ok: true };
+        } catch (err) {
+          const msg = String(err?.message || err).toLowerCase();
+          const locky = msg.includes("lock") || msg.includes("timed out");
+
+          // kalau terakhir / bukan masalah lock, fallback bersihin lokal
+          if (i === tries - 1 || !locky) {
+            const r2 = await sb.auth.signOut({ scope: "local" }); // ini penting: pasti bersih lokal
+            if (r2.error) return { ok: false, error: r2.error };
+            return { ok: true, fallback: "local" };
+          }
+          await new Promise(r => setTimeout(r, delayMs));
+        }
+      }
+    }
+
     $("btnLogout").addEventListener("click", async () => {
       clearLog();
-      await sb.auth.signOut();
-      log("Logout.");
+      log("Logout....");
+      const r = await signOutWithRetry();
+      if (!r.ok) log("Logout error: " + r.error.message);
+      else log("Logout ✅" + (r.fallback ? " (local cleanup)" : ""));
+      clearLoginInputs();
       await refreshAuthUI();
     });
 
@@ -425,6 +457,19 @@
         .limit(500);
     }
 
+        function clearDataUI() {
+      allRows = [];
+      $("rowCount").textContent = "0";
+      $("statusFilter").innerHTML = '<option value="ALL">Semua Status</option>';
+      $("tbody").innerHTML = `
+        <tr>
+          <td colspan="13" class="p-6 text-center text-gray-400">
+            Silakan login untuk melihat data.
+          </td>
+        </tr>
+      `;
+      setLoadStatus("loading", "Silakan login untuk load data.");
+    }
     async function loadRows() {
       try {
         setLoadStatus("loading","Loading data dari Supabase...");
@@ -444,7 +489,7 @@
         buildStatusDropdown(allRows);
         applyFilters();
         setLoadStatus("ok", `Load berhasil ✅ (${allRows.length} rows)`);
-        log(`Selesai load: ${allRows.length} rows (source: ${activeSource})`);
+        log(`Selesai load ✅`);
       } catch (e) {
         console.error(e);
         setLoadStatus("error","Load error (cek console).");
@@ -569,9 +614,6 @@
     // ============================================================
     // INIT
     // ============================================================
-    sb.auth.onAuthStateChange(() => refreshAuthUI());
-    refreshAuthUI();
-    loadRows();
 
     $("btnForgot").addEventListener("click", async () => {
       const email = $("email").value.trim();
@@ -581,6 +623,16 @@
       log("Link reset password terkirim. Cek email.");
     });
 
+        sb.auth.onAuthStateChange((event, session) => {
+      refreshAuthUI();
+      if (session?.user) {
+        loadRows();
+        clearLoginInputs(); // optional: bersihin juga saat login dari event
+      } else {
+        clearDataUI();
+        clearLoginInputs(); // <- ini yang penting pas logout
+      }
+    });
   </script>
 </body>
 </html>
