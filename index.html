@@ -9,8 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Supabase JS (UMD) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- XLSX -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body class="bg-[#f8f9fa] text-slate-800 font-sans">
@@ -59,6 +58,17 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <button id="btnNavData"
+            class="hidden px-4 py-2 rounded-full text-[10px] font-black uppercase border border-gray-600 text-gray-200
+                  hover:bg-gray-700 transition-all" type="button">
+            Data
+          </button>
+
+          <button id="btnNavDash"
+            class="hidden px-4 py-2 rounded-full text-[10px] font-black uppercase border border-gray-600 text-gray-200
+                  hover:bg-gray-700 transition-all" type="button">
+            Dashboard
+          </button>
           <button id="btnReload"
             class="hidden px-4 py-2 rounded-full text-[10px] font-black uppercase border border-[#ffcc00] text-[#ffcc00]
                    hover:bg-[#ffcc00] hover:text-black transition-all" type="button">
@@ -81,14 +91,13 @@
   <main class="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
 
     <!-- Status & Log (selalu kelihatan) -->
-    <div class="bg-white border border-gray-200 rounded-2xl p-4">
-      <div id="loadStatus" class="text-[12px] font-bold"></div>
-      <div id="appLog" class="mt-2 text-[12px] text-gray-600 whitespace-pre-wrap"></div>
-    </div>
+    <div class="hidden bg-white border border-gray-200 rounded-2xl p-4">
+    <div id="loadStatus" class="text-[12px] font-bold"></div>
+    <div id="appLog" class="mt-2 text-[12px] text-gray-600 whitespace-pre-wrap"></div>
+  </div>
 
-    <!-- ===== Auth + Upload ===== -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
+    <!-- ===== Auth ===== -->
+    <div class="grid grid-cols-1 gap-6">
       <!-- Login card -->
       <div id="loginCard" class="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm">
         <div class="flex items-center justify-between mb-4">
@@ -117,109 +126,274 @@
           </button>
 
           <button id="btnForgot"
-            class="px-4 py-2 rounded-full text-[10px] font-black uppercase border border-gray-700 text-gray-700 hover:bg-gray-800 transition-all"
+            class="w-full px-4 py-2 rounded-full text-[10px] font-black uppercase border border-gray-700 text-gray-700 hover:bg-gray-800 transition-all"
             type="button">
             Lupa Password
           </button>
         </div>
       </div>
-
-      <!-- Upload card (admin only) -->
-      <div id="uploadCard" class="hidden lg:col-span-2 bg-[#161616] border border-gray-800 rounded-3xl p-6 shadow-2xl text-white">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <div class="text-[#ffcc00] font-black uppercase text-xs tracking-widest italic">
-              Upload Excel (XLSX) → Upsert Supabase
-            </div>
-          </div>
-          <div class="text-[11px] text-gray-300">
-            Rekomendasi: RLS ON, SELECT public, INSERT/UPDATE authenticated.
-          </div>
-        </div>
-
-        <div class="mt-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-          <input id="fileXlsx" type="file" accept=".xlsx,.xls"
-            class="block w-full md:w-auto text-sm text-gray-200
-                  file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
-                  file:bg-[#2a2a2a] file:text-white hover:file:bg-[#3a3a3a]" />
-
-          <input id="sheetName"
-            class="w-full md:w-96 px-3 py-2 rounded-xl bg-[#0f0f0f] border border-gray-700 text-sm outline-none focus:border-[#ffcc00]"
-            placeholder="Nama sheet (kosong = sheet pertama)" />
-
-          <button id="btnUpload"
-            class="w-full md:w-auto px-5 py-2 rounded-full bg-[#ffcc00] hover:bg-yellow-400 text-black font-black text-[11px] uppercase disabled:opacity-40 disabled:cursor-not-allowed"
-            type="button">
-            Upload & Upsert
-          </button>
-        </div>
-
-        <div id="uploadLog" class="mt-4 text-[12px] text-gray-200 whitespace-pre-wrap"></div>
-      </div>
-
     </div>
 
-    <!-- ===== DATA SECTION (muncul setelah login) ===== -->
-    <div id="dataSection" class="hidden space-y-6">
+<!-- ===== DATA SECTION (muncul setelah login) ===== -->
+<div id="dataSection" class="hidden space-y-6">
 
-      <!-- ===== Filters ===== -->
-      <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
-        <div class="flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
-          <div class="flex flex-col md:flex-row items-start md:items-center gap-3 w-full">
-            <input id="q"
-              class="w-full md:w-[420px] px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]"
-              placeholder="Cari WO / Part Number / Model / Customer / SN" />
+  <!-- ===== Filters ===== -->
+  <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm space-y-3">
 
-            <select id="statusFilter"
-              class="w-full md:w-64 px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]">
-              <option value="ALL">Semua Status</option>
-            </select>
-          </div>
+    <div class="flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
+      <div class="flex flex-col md:flex-row items-start md:items-center gap-3 w-full">
 
-          <div class="text-sm text-gray-700">
-            Total Rows: <span id="rowCount" class="font-black text-[#005596]">0</span>
-          </div>
-        </div>
+        <input id="q"
+          class="w-full md:w-68 px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]"
+          placeholder="Cari WO / Part Number / Model / Customer / SN" />
+
+        <select id="statusFilter"
+          class="w-full md:w-60 px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]">
+          <option value="ALL">Semua Status</option>
+        </select>
+
+        <select id="partFilter"
+          class="w-full md:w-60 px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]">
+          <option value="ALL">Semua Sparepart</option>
+        </select>
+
+        <select id="pageSize"
+          class="w-full md:w-40 px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]">
+          <option value="25">25/halaman</option>
+          <option value="50">50/halaman</option>
+          <option value="100">100/halaman</option>
+        </select>
+
       </div>
 
-      <!-- ===== Table ===== -->
-      <div class="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden">
+      <div class="text-sm text-gray-700">
+        Total Rows: <span id="rowCount" class="font-black text-[#005596]">0</span>
+      </div>
+    </div>
+
+    <!-- Pagination bar -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-sm text-gray-700">
+      <div>
+        Menampilkan <span id="shownCount" class="font-black">0</span> dari
+        <span id="filteredCount" class="font-black">0</span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="btnPrevPage"
+          class="px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          type="button">
+          Prev
+        </button>
+
+        <span id="pageInfo" class="font-black">1/1</span>
+
+        <button id="btnNextPage"
+          class="px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          type="button">
+          Next
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== Table ===== -->
+  <div class="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-[1100px] w-full text-xs">
+      <thead class="sticky top-0 bg-white border-b border-gray-200">
+        <tr class="text-gray-600 uppercase font-black">
+          <th class="p-3 text-left w-[110px]">WO</th>
+          <th class="p-3 text-left w-[110px] whitespace-nowrap">Order Date</th>
+          <th class="p-3 text-left w-[140px]">Customer</th>
+          <th class="p-3 text-left w-[120px]">Model</th>
+          <th class="p-3 text-left w-[110px]">SN</th>
+          <th class="p-3 text-left w-[140px]">Part Number</th>
+          <th class="p-3 text-left min-w-[240px]">Description</th>
+          <th class="p-3 text-right w-[70px] whitespace-nowrap">Order</th>
+          <th class="p-3 text-right w-[70px] whitespace-nowrap">Supply</th>
+          <th class="p-3 text-right w-[90px] whitespace-nowrap">Remaining</th>
+          <th class="p-3 text-left w-[110px]">Status</th>
+          <th class="p-3 text-left w-[130px] whitespace-nowrap">ETA</th>
+          <th class="p-3 text-left min-w-[220px]">Remarks</th>
+          <th class="p-3 text-right w-[70px] whitespace-nowrap">Aging</th>
+        </tr>
+      </thead>
+        <tbody id="tbody" class="divide-y divide-gray-100"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="text-[11px] text-gray-500">
+    Catatan: webapp ini read-only. Edit data hanya lewat Google Spreadsheet.
+  </div>
+
+</div>
+
+<!-- ===== DASHBOARD SECTION (muncul setelah login) ===== -->
+<div id="dashboardSection" class="hidden space-y-6">
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
+      <div class="text-xs font-black uppercase text-gray-500">Total WO</div>
+      <div id="woTotal" class="mt-2 text-3xl font-black text-[#005596]">0</div>
+    </div>
+
+    <div id="cardNotCompleted"
+      class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm cursor-pointer hover:bg-gray-50 group">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-xs font-black uppercase text-gray-500">WO Not Completed</div>
+          <div id="woNotCompleted" class="mt-2 text-3xl font-black text-red-600">0</div>
+          <div class="mt-1 text-[11px] text-gray-400">Klik untuk lihat daftar WO</div>
+        </div>
+        <div class="mt-1 inline-flex items-center gap-2">
+          <span class="hidden md:inline text-[10px] font-black uppercase text-gray-400">Lihat</span>
+          <span class="w-9 h-9 rounded-full border border-gray-200 bg-white flex items-center justify-center group-hover:bg-gray-100 transition">
+            <span class="text-2xl leading-none text-gray-500">›</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div id="cardCompleted"
+      class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm cursor-pointer hover:bg-gray-50 group">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-xs font-black uppercase text-gray-500">WO Completed</div>
+          <div id="woCompleted" class="mt-2 text-3xl font-black text-green-600">0</div>
+          <div class="mt-1 text-[11px] text-gray-400">Klik untuk lihat daftar WO</div>
+        </div>
+        <div class="mt-1 inline-flex items-center gap-2">
+          <span class="hidden md:inline text-[10px] font-black uppercase text-gray-400">Lihat</span>
+          <span class="w-9 h-9 rounded-full border border-gray-200 bg-white flex items-center justify-center group-hover:bg-gray-100 transition">
+            <span class="text-2xl leading-none text-gray-500">›</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
+    <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
+      Pie: Completed vs Not Completed
+    </div>
+    <div class="mx-auto w-[320px] h-[320px] md:w-[360px] md:h-[360px]">
+      <canvas id="chartPie"></canvas>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
+    <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
+      Tabel Perbandingan
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="text-gray-600 uppercase font-black">
+          <tr>
+            <th class="p-2 text-left">Kategori</th>
+            <th class="p-2 text-right">Jumlah WO</th>
+            <th class="p-2 text-right">Persentase</th>
+          </tr>
+        </thead>
+        <tbody id="woSummaryTbody" class="divide-y divide-gray-100"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== WO LIST MODAL (overlay) ===== -->
+<div id="woListSection" class="hidden fixed inset-0 z-50 flex items-start justify-center p-6">
+  <!-- backdrop -->
+  <div id="woBackdrop" class="fixed inset-0 bg-black/50"></div>
+
+  <!-- panel -->
+  <div class="relative w-[95vw] max-w-6xl bg-white border border-gray-200 rounded-3xl p-5 shadow-2xl
+              flex flex-col max-h-[calc(100vh-3rem)]">
+
+    <!-- header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <div id="woListTitle" class="text-sm font-black uppercase tracking-widest text-gray-600">
+          WO List
+        </div>
+        <div class="text-xs text-gray-500">Klik WO untuk lihat detail item/sparepart.</div>
+      </div>
+
+      <button id="btnBackDash"
+        class="px-4 py-2 rounded-full text-[10px] font-black uppercase border border-gray-300 hover:bg-gray-50"
+        type="button">
+        Close
+      </button>
+    </div>
+
+    <!-- search -->
+    <input id="woListSearch"
+      class="mt-3 w-full md:w-[420px] px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]"
+      placeholder="Cari Work Order / Customer / Model / SN / Part Number" />
+
+    <!-- table -->
+    <div class="mt-3 flex-1 min-h-0 border border-gray-200 rounded-3xl overflow-hidden">
+      <div class="h-full overflow-y-auto overscroll-contain">
         <div class="overflow-x-auto">
           <table class="min-w-[1100px] w-full text-xs">
-            <thead class="sticky top-0 bg-white border-b border-gray-200">
+            <thead class="sticky top-0 bg-white border-b border-gray-200 z-10">
               <tr class="text-gray-600 uppercase font-black">
                 <th class="p-3 text-left">WO</th>
                 <th class="p-3 text-left">Order Date</th>
+                <th class="p-3 text-left">PIC</th>
                 <th class="p-3 text-left">Customer</th>
                 <th class="p-3 text-left">Model</th>
                 <th class="p-3 text-left">SN</th>
                 <th class="p-3 text-left">Part Number</th>
                 <th class="p-3 text-left">Description</th>
-                <th class="p-3 text-right">Order</th>
-                <th class="p-3 text-right">Supply</th>
-                <th class="p-3 text-right">Remaining</th>
                 <th class="p-3 text-left">Status</th>
-                <th class="p-3 text-left">ETA</th>
                 <th class="p-3 text-right">Aging</th>
+                <th class="p-3 text-left">Remarks</th>
               </tr>
             </thead>
-            <tbody id="tbody" class="divide-y divide-gray-100"></tbody>
+            <tbody id="woListTbody" class="divide-y divide-gray-100"></tbody>
           </table>
         </div>
       </div>
-      <div class="text-[11px] text-gray-500">
-        Catatan: kalau upload kena error RLS, cek policy insert/update di tabel <code>part_monitoring</code>.
+    </div>
+
+    <!-- FOOTER PAGINATION -->
+    <div class="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between text-sm text-gray-700">
+      <div>
+        Menampilkan <span id="woShownCount" class="font-black">0</span> dari
+        <span id="woFilteredCount" class="font-black">0</span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="btnWoPrev"
+          class="px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          type="button">
+          Prev
+        </button>
+
+        <span id="woPageInfo" class="font-black">1/1</span>
+
+        <button id="btnWoNext"
+          class="px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          type="button">
+          Next
+        </button>
       </div>
     </div>
-  </main>
 
+  </div>
+</div>
   <script>
     // ============================================================
     // CONFIG - isi dengan milikmu
     // ============================================================
     const SUPABASE_URL = "https://nmtoxcmjxyesgpvppfbb.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tdG94Y21qeHllc2dwdnBwZmJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzgwODEsImV4cCI6MjA4NzQ1NDA4MX0.Yw_fBL5XhxShoebR15qo5RTD9iHyD_2jmKw7Pr5epvI";
-
+    // === Google Sheet (source data) ===
+    const SHEET_ID = "1p0VcQbm2g8Yssi-hDQpj6az4E_gVuZYAhuPgQfOK4do";
+    const SHEET_GID = "1943030973";
+    const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
     // Table/view
     const TABLE = "part_monitoring";
     const VIEW  = "v_part_monitoring";
@@ -237,36 +411,418 @@
     // ============================================================
     const $ = id => document.getElementById(id);
 
-        function appendLog(el, msg) {
-      if (!el) return;
-      el.textContent = (el.textContent ? el.textContent + "\n" : "") + msg;
+    // ===== Runtime log (tidak ditampilkan) =====
+    const runtimeLog = [];
+    window.__getRuntimeLog = () => runtimeLog.join("\n"); // cek via console
+
+    function ts() {
+      return new Date().toISOString().replace("T", " ").slice(0, 19);
     }
 
-    function log(msg) {
-      // selalu tampil di kotak log utama
-      appendLog($("appLog"), msg);
+function lockBodyScroll(lock) {
+  document.documentElement.classList.toggle("overflow-hidden", lock); // <html>
+  document.body.classList.toggle("overflow-hidden", lock);           // <body>
+}
 
-      // kalau uploadCard sedang tampil (admin mode), tulis juga ke uploadLog
-      const uploadCard = $("uploadCard");
-      if (uploadCard && !uploadCard.classList.contains("hidden")) {
-        appendLog($("uploadLog"), msg);
+function openWOModal(mode) {
+  woListMode = mode;
+  woListPage = 1;
+
+  lockBodyScroll(true);
+  show("woListSection", true);
+
+  // reset search
+  if ($("woListSearch")) $("woListSearch").value = "";
+
+  renderWOList(mode);
+
+  if ($("woListSearch")) setTimeout(() => $("woListSearch").focus(), 0);
+}
+
+function closeWOModal() {
+  lockBodyScroll(false);
+  show("woListSection", false);
+}
+
+    function isCompletedStatus(s) {
+      const v = String(s ?? "").trim().toLowerCase();
+      return v === "completed" || v === "complete" || v.includes("completed");
+    }
+
+function computeWOIsCompletedForRowGroup(rowsOfWo) {
+  return rowsOfWo.length > 0 && rowsOfWo.every(r => isCompletedStatus(r.status));
+}
+
+function renderWOList(mode) {
+  const title = mode === "not" ? "WO NOT COMPLETED" : "WO COMPLETED";
+  $("woListTitle").textContent = title;
+
+  const q = ($("woListSearch")?.value || "").trim().toLowerCase();
+
+  // group per WO
+  const map = new Map();
+  for (const r of allRows) {
+    const wo = String(r.work_order ?? "").trim();
+    if (!wo) continue;
+    if (!map.has(wo)) map.set(wo, []);
+    map.get(wo).push(r);
+  }
+
+  // pilih WO sesuai mode
+  let flat = [];
+  for (const [wo, items] of map.entries()) {
+    const isComp = computeWOIsCompletedForRowGroup(items);
+    if (mode === "completed" && !isComp) continue;
+    if (mode === "not" && isComp) continue;
+    flat.push(...items);
+  }
+
+  // search
+  if (q) {
+    flat = flat.filter(r => {
+      const hay = [
+        r.work_order, r.customer, r.model, r.serial_number,
+        r.part_number, r.part_description, r.pic, r.remarks
+      ].map(x => String(x ?? "").toLowerCase()).join(" | ");
+      return hay.includes(q);
+    });
+  }
+
+  // sort: aging desc
+  flat.sort((a,b) => (Number(b.aging_days||-1e15) - Number(a.aging_days||-1e15)));
+
+  // ===== PAGINATION =====
+  const total = flat.length;
+  const totalPages = Math.max(1, Math.ceil(total / woListPageSize));
+  woListPage = Math.min(Math.max(1, woListPage), totalPages);
+
+  const start = (woListPage - 1) * woListPageSize;
+  const pageRows = flat.slice(start, start + woListPageSize);
+
+  // update footer UI
+  $("woFilteredCount").textContent = total;
+  $("woShownCount").textContent = pageRows.length;
+  $("woPageInfo").textContent = `${woListPage}/${totalPages}`;
+
+  $("btnWoPrev").disabled = woListPage <= 1;
+  $("btnWoNext").disabled = woListPage >= totalPages;
+
+  // render table (hanya pageRows)
+  $("woListTbody").innerHTML = pageRows.map(r => `
+    <tr class="hover:bg-[#fff9e6]">
+      <td class="p-3 font-black text-[#005596]">${escapeHtml(r.work_order)}</td>
+      <td class="p-3">${escapeHtml(r.order_date)}</td>
+      <td class="p-3">${escapeHtml(r.pic)}</td>
+      <td class="p-3">${escapeHtml(r.customer)}</td>
+      <td class="p-3">${escapeHtml(r.model)}</td>
+      <td class="p-3 font-mono">${escapeHtml(r.serial_number)}</td>
+      <td class="p-3 font-mono font-bold">${escapeHtml(r.part_number)}</td>
+      <td class="p-3">${escapeHtml(r.part_description)}</td>
+      <td class="p-3">${escapeHtml(r.status)}</td>
+      <td class="p-3 text-right font-black">${escapeHtml(r.aging_days ?? "")}</td>
+      <td class="p-3">${escapeHtml(r.remarks)}</td>
+    </tr>
+  `).join("");
+}
+
+    function computeWOStats(rows) {
+      // hitung WO unik, bukan jumlah baris part
+      const map = new Map();
+
+      for (const r of rows || []) {
+        const wo = String(r.work_order ?? "").trim();
+        if (!wo) continue;
+        if (!map.has(wo)) map.set(wo, []);
+        map.get(wo).push(r.status);
+      }
+
+      let completed = 0;
+      let notCompleted = 0;
+
+      for (const statuses of map.values()) {
+        // WO dianggap completed kalau SEMUA line completed
+        const allComp = statuses.length > 0 && statuses.every(s => isCompletedStatus(s));
+        if (allComp) completed++;
+        else notCompleted++;
+      }
+
+      return { completed, notCompleted, total: completed + notCompleted };
+    }
+
+    let __pieChart = null;
+
+    function renderDashboard() {
+      const stats = computeWOStats(allRows);
+
+      $("woCompleted").textContent = stats.completed;
+      $("woNotCompleted").textContent = stats.notCompleted;
+      $("woTotal").textContent = stats.total;
+
+      const pct = (n) => stats.total ? ((n / stats.total) * 100).toFixed(1) + "%" : "0%";
+
+      $("woSummaryTbody").innerHTML = `
+        <tr>
+          <td class="p-2 font-bold">Not Completed</td>
+          <td class="p-2 text-right font-black">${stats.notCompleted}</td>
+          <td class="p-2 text-right">${pct(stats.notCompleted)}</td>
+        </tr>
+        <tr>
+          <td class="p-2 font-bold">Completed</td>
+          <td class="p-2 text-right font-black">${stats.completed}</td>
+          <td class="p-2 text-right">${pct(stats.completed)}</td>
+        </tr>
+        <tr>
+          <td class="p-2 font-black">Total</td>
+          <td class="p-2 text-right font-black">${stats.total}</td>
+          <td class="p-2 text-right">100%</td>
+        </tr>
+      `;
+
+      if (__pieChart) __pieChart.destroy();
+
+      __pieChart = new Chart($("chartPie"), {
+        type: "pie",
+        data: {
+          labels: ["Not Completed", "Completed"],
+          datasets: [{ data: [stats.notCompleted, stats.completed] }]
+        },
+        options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: "bottom" } }
+      }
+      });
+    }
+
+    // log umum: tidak tampil di UI
+    function log(msg) {
+      const line = `[${ts()}] ${msg}`;
+      runtimeLog.push(line);
+      console.log(line);
+    }
+
+        function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cur = "";
+      let inQ = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+
+        if (c === '"') {
+          // handle escaped quote ""
+          if (inQ && text[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQ = !inQ;
+          }
+          continue;
+        }
+
+        // delimiter (comma) only if not in quotes
+        if (c === "," && !inQ) {
+          row.push(cur);
+          cur = "";
+          continue;
+        }
+
+        // newline only if not in quotes
+        if ((c === "\n" || c === "\r") && !inQ) {
+          if (c === "\r" && text[i + 1] === "\n") i++; // CRLF
+          row.push(cur);
+          cur = "";
+          // jangan masukin row kosong banget
+          if (row.some(v => String(v ?? "").trim() !== "")) rows.push(row);
+          row = [];
+          continue;
+        }
+
+        cur += c;
+      }
+
+      // last cell
+      row.push(cur);
+      if (row.some(v => String(v ?? "").trim() !== "")) rows.push(row);
+
+      return rows.map(r => r.map(v => String(v ?? "").trim()));
+    }
+
+    function normH(s) {
+      return String(s ?? "")
+        .replace(/\u00A0/g, " ")   // NBSP
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+    }
+
+        // --- ADD: basic XSS-safe output ---
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+        function isSheetError(v) {
+      if (v == null) return true;
+      const s = String(v).trim().toUpperCase();
+      return ["#VALUE!", "#N/A", "#REF!", "#DIV/0!", "#NAME?", "#NUM!", "#ERROR"].includes(s);
+    }
+
+    function sheetDateToISO(v) {
+      if (!v || isSheetError(v)) return null;
+      const s = String(v).trim();
+
+      // sudah ISO
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+
+      // format M/D/YYYY atau MM/DD/YYYY (contoh di sheet kamu)
+      const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m) {
+        const mm = Number(m[1]), dd = Number(m[2]), yy = Number(m[3]);
+        const d = new Date(yy, mm - 1, dd);
+        return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0,10);
+      }
+
+      // fallback parse umum
+      const d = new Date(s);
+      return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0,10);
+    }
+
+    function toNumberSafe(v) {
+      if (v == null) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      const n = Number(s.replace(/[^0-9.-]/g, ""));
+      return Number.isFinite(n) ? n : null;
+    }
+
+    async function loadRowsFromSheet() {
+      setLoadStatus("loading", "Loading data dari Google Sheet...");
+
+      const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+      if (!res.ok) throw new Error(`Fetch sheet gagal: ${res.status} ${res.statusText}`);
+
+      const text = await res.text();
+      const grid = parseCsv(text); // <-- robust 2D rows
+
+      // cari header row yang mengandung WORK ORDER & TANGGAL ORDER
+      let headerIdx = -1;
+      for (let i = 0; i < Math.min(grid.length, 80); i++) {
+        const cols = grid[i].map(normH);
+        if (cols.includes("WORK ORDER") && cols.includes("TANGGAL ORDER")) {
+          headerIdx = i;
+          break;
+        }
+      }
+      if (headerIdx === -1) throw new Error("Header tidak ketemu (WORK ORDER & TANGGAL ORDER).");
+
+      const headerRow = grid[headerIdx].map(normH);
+
+      // map header -> index
+      const idx = {};
+      headerRow.forEach((h, i) => { if (h) idx[h] = i; });
+
+      // helper get cell by header name
+      const get = (row, h) => {
+        const i = idx[normH(h)];
+        return i == null ? "" : (row[i] ?? "");
+      };
+
+      const rows = [];
+      for (let r = headerIdx + 1; r < grid.length; r++) {
+        const row = grid[r];
+        // skip row kosong
+        if (!row || row.every(v => !String(v).trim())) continue;
+
+        const obj = {
+          work_order: String(get(row, "WORK ORDER")).trim() || null,
+          order_date: sheetDateToISO(get(row, "TANGGAL ORDER")),
+          pic: String(get(row, "PIC")).trim() || null,
+          customer: String(get(row, "CUSTOMER")).trim() || null,
+          model: String(get(row, "MODEL")).trim() || null,
+          serial_number: String(get(row, "SN")).trim() || null,
+          part_number: String(get(row, "PART NUMBER")).trim() || null,
+          part_description: String(get(row, "PART DESCRIPTION")).trim() || null,
+          qty_order: toNumberSafe(get(row, "ORDER")),
+          qty_supply: toNumberSafe(get(row, "SUPPLY")),
+          status: String(get(row, "STATUS")).trim() || null,
+          eta: sheetDateToISO(get(row, "ETA")),
+          remarks: String(get(row, "REMARKS")).trim() || null,
+        };
+
+        obj.qty_remaining =
+          (obj.qty_order != null && obj.qty_supply != null) ? (obj.qty_order - obj.qty_supply) : null;
+
+        // AGING = today - order_date
+        const aging = computeAgingFromISODate(obj.order_date);
+        obj.aging_days = aging.aging_days;
+        obj.aging_error = aging.aging_error;
+        obj.aging_error_reason = aging.aging_error_reason;
+
+        rows.push(obj);
+      }
+
+      allRows = rows;
+      renderDashboard();
+      buildStatusDropdown(allRows);
+      if ($("statusFilter").value === "ALL") {
+      }
+
+      pageSize = parseInt($("pageSize")?.value, 10) || 25;
+      currentPage = 1;
+
+      applyFilters();
+      setLoadStatus("ok", `Load berhasil ✅ (${allRows.length} rows) [SOURCE: SHEET]`);
+    }
+
+    // --- ADD: access logging (sekali per session) ---
+    let __loggedThisSession = false;
+
+    async function logAccessOnce() {
+      if (__loggedThisSession) return;
+
+      const { data: { session } } = await sb.auth.getSession();
+      const user = session?.user;
+      if (!user) return;
+
+      __loggedThisSession = true;
+
+      // jika tabel access_logs belum ada → akan error (lihat console)
+      const payload = {
+        user_id: user.id,
+        email: user.email ?? null,
+        user_agent: navigator.userAgent,
+        path: location.pathname
+      };
+
+      const { error } = await sb.from("access_logs").insert(payload);
+      if (error) {
+        // jangan ganggu UX, cukup warn
+        console.warn("logAccessOnce gagal:", error.message);
+      } else {
+        log("Access log tercatat: " + (user.email || user.id));
       }
     }
 
-    function clearLog() {
-      const a = $("appLog");
-      if (a) a.textContent = "";
-
-      const u = $("uploadLog");
-      if (u) u.textContent = "";
-    }
-
     function setLoadStatus(type, text) {
+      log(text); // simpan ke log internal + console (tidak tampil di UI)
+
+      // optional: update elemen kalau masih ada (walau hidden)
       const el = $("loadStatus");
       if (!el) return;
       const cls = type === "ok" ? "text-green-400" : (type === "error" ? "text-red-400" : "text-yellow-300");
-      el.className = "mt-3 text-[12px] font-bold " + cls;
+      el.className = "text-[12px] font-bold " + cls;
       el.textContent = text;
+    }
+
+    function clearLog() {
+      // viewer-only: dulu buat bersihin uploadLog, sekarang tidak dipakai.
+      // Kalau mau, bisa juga reset runtimeLog di sini.
     }
 
     function show(id, on) { $(id).classList.toggle("hidden", !on); }
@@ -282,7 +838,7 @@
       $("statusFilter").innerHTML = '<option value="ALL">Semua Status</option>';
       $("tbody").innerHTML = `
         <tr>
-          <td colspan="13" class="p-6 text-center text-gray-400">
+          <td colspan="14" class="p-6 text-center text-gray-400">
             Silakan login untuk melihat data.
           </td>
         </tr>
@@ -290,27 +846,39 @@
       setLoadStatus("loading", "Silakan login untuk load data.");
     }
 
+    let activePage = "data"; // default
     function setMode(mode) {
       const loggedOut = mode === "loggedOut";
-      const isAdmin = mode === "admin";
 
       // tampilkan login hanya saat logged out
       show("loginCard", loggedOut);
 
       // tampilkan data section setelah login
-      show("dataSection", !loggedOut);
 
       // tombol nav
       show("btnLogout", !loggedOut);
       show("btnReload", !loggedOut);
 
-      // admin only
-      show("uploadCard", isAdmin);
+      show("btnNavData", !loggedOut);
+      show("btnNavDash", !loggedOut);
+
+      show("dataSection", !loggedOut && activePage === "data");
+      show("dashboardSection", !loggedOut && activePage === "dashboard");
 
       if (loggedOut) {
         clearDataUI();
         clearLoginInputs();
       }
+          if (!loggedOut) {
+      routeFromHash(); // tampilkan sesuai #hash
+    } else {
+      show("dataSection", false);
+      show("dashboardSection", false);
+      function setDashboardView(view) {
+  // view: "main" | "wo-not" | "wo-comp"
+  show("woListSection", view !== "main");
+}
+    }
     }
 
     let routingInFlight = false;
@@ -318,10 +886,10 @@
       if (routingInFlight) return;
       routingInFlight = true;
       try {
-        const { data: isAdmin, error } = await sb.rpc("is_upload_admin");
-        setMode(!error && isAdmin ? "admin" : "viewer");
-
+        setMode("viewer");
+        await logAccessOnce();
         await loadRows();
+        routeFromHash();
         clearLoginInputs();
       } finally {
         routingInFlight = false;
@@ -352,6 +920,30 @@
       if (!isNaN(d.getTime())) return d.toISOString().slice(0,10);
       return null;
     }
+
+    function computeAgingFromISODate(isoDate) {
+      // isoDate: "YYYY-MM-DD"
+      if (!isoDate) {
+        return { aging_days: null, aging_error: true, aging_error_reason: "order_date kosong/invalid" };
+      }
+
+      const d = new Date(isoDate + "T00:00:00");
+      if (Number.isNaN(d.getTime())) {
+        return { aging_days: null, aging_error: true, aging_error_reason: "order_date unparsable" };
+      }
+
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      const diffMs = today - d;
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      if (Number.isNaN(days)) {
+        return { aging_days: null, aging_error: true, aging_error_reason: "aging NaN" };
+      }
+
+      return { aging_days: days, aging_error: false, aging_error_reason: null };
+    }
+
     function toInt(v) {
       if (v === null || v === undefined || v === "") return null;
       const n = Number(String(v).replace(/[^0-9.-]/g,""));
@@ -391,15 +983,9 @@
         if (user) {
           $("authBadge").textContent = "Login: " + user.email;
           $("btnLogout").classList.remove("hidden");
-          $("btnUpload").disabled = true; // default off
-          // check admin in background
-          sb.rpc("is_upload_admin").then(({ data: isAdmin, error }) => {
-            if (!error) $("btnUpload").disabled = !isAdmin;
-          });
         } else {
           $("authBadge").textContent = "Belum login";
           $("btnLogout").classList.add("hidden");
-          $("btnUpload").disabled = true;
         }
       } catch (e) {
         console.error(e);
@@ -454,9 +1040,29 @@
       await refreshAuthUI();
     });
 
+    $("btnWoPrev")?.addEventListener("click", () => {
+  if (woListPage > 1) {
+    woListPage--;
+    renderWOList(woListMode);
+  }
+});
+
+$("btnWoNext")?.addEventListener("click", () => {
+  woListPage++;
+  renderWOList(woListMode);
+});
+
+$("woListSearch")?.addEventListener("input", () => {
+  woListPage = 1;                 // reset ke halaman 1
+  renderWOList(woListMode);
+});
+
     $("btnLogout").addEventListener("click", async () => {
       clearLog();
       await signOutSafe();
+
+      __loggedThisSession = false; // --- ADD
+
       setMode("loggedOut");
       await refreshAuthUI();
     });
@@ -474,198 +1080,259 @@
     // LOAD + RENDER TABLE
     // ============================================================
     let allRows = [];
+    let woListMode = null;      // "not" / "completed"
+    let woListPage = 1;
+    let woListPageSize = 25;
+    let pageSize = 25;
+    let currentPage = 1;
     let activeSource = VIEW;
 
-    function buildStatusDropdown(rows) {
-      const set = new Set(rows.map(r => String(r.status || "").trim()).filter(Boolean));
-      const list = Array.from(set).sort((a,b)=>a.localeCompare(b));
-      $("statusFilter").innerHTML = '<option value="ALL">Semua Status</option>' +
-        list.map(s => `<option value="${s.replaceAll('"','&quot;')}">${s}</option>`).join("");
+      function buildStatusDropdown(rows) {
+        const set = new Set(rows.map(r => String(r.status || "").trim()).filter(Boolean));
+        const list = Array.from(set).sort((a,b)=>a.localeCompare(b));
+        $("statusFilter").innerHTML =
+          '<option value="ALL">Semua Status</option>' +
+          list.map(s => `<option value="${s.replaceAll('"','&quot;')}">${s}</option>`).join("");
+      }
+
+        function buildPartDropdownPerPage(pageRows) {
+      const sel = $("partFilter");
+      if (!sel) return;
+
+      const prev = sel.value || "ALL";
+      const set = new Set(pageRows.map(r => String(r.part_number || "").trim()).filter(Boolean));
+      const parts = Array.from(set).sort((a,b)=>a.localeCompare(b));
+
+      sel.innerHTML =
+        '<option value="ALL">Semua Sparepart</option>' +
+        parts.map(p => `<option value="${p.replaceAll('"','&quot;')}">${p}</option>`).join("");
+
+    // hapus option temp sebelumnya biar gak numpuk
+    sel.querySelectorAll('option[data-temp="1"]').forEach(o => o.remove());
+
+    if (prev !== "ALL" && !parts.includes(prev)) {
+      const opt = document.createElement("option");
+      opt.value = prev;
+      opt.textContent = `${prev} (selected)`;
+      opt.selected = true;
+      opt.dataset.temp = "1";
+      sel.insertBefore(opt, sel.firstChild.nextSibling); // setelah "Semua Sparepart"
+      sel.value = prev;
+    } else {
+      sel.value = prev;
+    }
     }
 
     function renderTable(rows) {
       const tbody = $("tbody");
       tbody.innerHTML = rows.map(r => `
         <tr class="hover:bg-[#fff9e6]">
-          <td class="p-3 font-black text-[#005596]">${r.work_order ?? ""}</td>
-          <td class="p-3 text-gray-700">${r.order_date ?? ""}</td>
-          <td class="p-3">${r.customer ?? ""}</td>
-          <td class="p-3">${r.model ?? ""}</td>
-          <td class="p-3 font-mono text-sky-700 font-bold">${r.serial_number ?? ""}</td>
-          <td class="p-3 font-mono font-bold">${r.part_number ?? ""}</td>
-          <td class="p-3 text-gray-700">${r.part_description ?? ""}</td>
-          <td class="p-3 text-right">${r.qty_order ?? ""}</td>
-          <td class="p-3 text-right">${r.qty_supply ?? ""}</td>
-          <td class="p-3 text-right font-black">${r.qty_remaining ?? ""}</td>
-          <td class="p-3">${r.status ?? ""}</td>
-          <td class="p-3">${r.eta ?? ""}</td>
-          <td class="p-3 text-right">${r.aging_days ?? ""}</td>
+          <td class="p-3 font-black text-[#005596]">${escapeHtml(r.work_order ?? "")}</td>
+          <td class="p-3 text-gray-700">${escapeHtml(r.order_date ?? "")}</td>
+          <td class="p-3">${escapeHtml(r.customer ?? "")}</td>
+          <td class="p-3">${escapeHtml(r.model ?? "")}</td>
+          <td class="p-3 font-mono text-sky-700 font-bold">${escapeHtml(r.serial_number ?? "")}</td>
+          <td class="p-3 whitespace-nowrap font-bold">${escapeHtml(r.part_number ?? "")}</td>
+          <td class="p-3 text-gray-700">${escapeHtml(r.part_description ?? "")}</td>
+          <td class="p-3 text-right">${escapeHtml(r.qty_order ?? "")}</td>
+          <td class="p-3 text-right">${escapeHtml(r.qty_supply ?? "")}</td>
+          <td class="p-3 text-right font-black">${escapeHtml(r.qty_remaining ?? "")}</td>
+          <td class="p-3">${escapeHtml(r.status ?? "")}</td>
+          <td class="p-3 whitespace-nowrap">${escapeHtml(r.eta ?? "")}</td>
+          <!-- ADD: remarks -->
+          <td class="p-3">${renderRemarksCell(r)}</td>
+
+          <td class="p-3 text-right">${escapeHtml(r.aging_days ?? "")}</td>
         </tr>
       `).join("");
     }
 
-    function applyFilters() {
+    function renderRemarksCell(r) {
+      const remarks = r.remarks ?? "";
+      const isErr = !!r.aging_error; // butuh kolom aging_error dari DB/view
+
+      if (isErr) {
+        return `
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-red-700">${escapeHtml(remarks)}</span>
+            <span class="inline-flex items-center rounded-full border border-red-300 bg-red-50 text-red-700 px-2 py-0.5 text-[10px] font-black">
+              AGING ERROR
+            </span>
+          </div>
+        `;
+      }
+      return `<span>${escapeHtml(remarks)}</span>`;
+    }
+
+      function applyFilters() {
       const q = $("q").value.trim().toLowerCase();
       const st = $("statusFilter").value;
+      const part = $("partFilter") ? $("partFilter").value : "ALL";
+
       let rows = allRows;
-      if (st !== "ALL") rows = rows.filter(r => String(r.status || "").trim() === st);
+
+      if (st !== "ALL") {
+        rows = rows.filter(r => String(r.status || "").trim() === st);
+      }
+
       if (q) rows = rows.filter(r => {
         const hay = [r.work_order, r.part_number, r.model, r.customer, r.serial_number, r.part_description]
           .map(x => String(x ?? "").toLowerCase()).join(" | ");
         return hay.includes(q);
       });
-      $("rowCount").textContent = rows.length;
-      renderTable(rows);
+
+      if (part !== "ALL") rows = rows.filter(r => String(r.part_number || "").trim() === part);
+      rows = rows.slice().sort((a, b) => {
+        const aComp = isCompletedStatus(a.status);
+        const bComp = isCompletedStatus(b.status);
+        if (aComp !== bComp) return aComp ? 1 : -1; // non-completed di atas
+
+        const aA = (a.aging_days == null ? -1e15 : Number(a.aging_days));
+        const bA = (b.aging_days == null ? -1e15 : Number(b.aging_days));
+        if (bA !== aA) return bA - aA; // aging desc
+
+        // tie-breaker: order_date terbaru dulu (kalau ada)
+        return String(b.order_date || "").localeCompare(String(a.order_date || ""));
+      });
+      const filtered = rows;
+      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+      currentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+      const start = (currentPage - 1) * pageSize;
+      const pageRows = filtered.slice(start, start + pageSize);
+
+      // info
+      if ($("filteredCount")) $("filteredCount").textContent = filtered.length;
+      if ($("shownCount")) $("shownCount").textContent = pageRows.length;
+      if ($("pageInfo")) $("pageInfo").textContent = `${currentPage}/${totalPages}`;
+      if ($("btnPrevPage")) $("btnPrevPage").disabled = currentPage <= 1;
+      if ($("btnNextPage")) $("btnNextPage").disabled = currentPage >= totalPages;
+
+      // dropdown sparepart dibuat per page
+      buildPartDropdownPerPage(pageRows);
+
+      // render
+      renderTable(pageRows);
+      $("rowCount").textContent = filtered.length; // kalau masih mau pakai total rows
     }
 
     async function trySelect(fromName) {
-      return await sb
+      // 1) coba versi lengkap (ada remarks + aging_error)
+      let res = await sb
         .from(fromName)
-        .select("work_order,order_date,customer,model,serial_number,part_number,part_description,qty_order,qty_supply,qty_remaining,status,eta,aging_days")
+        .select("work_order,order_date,customer,model,serial_number,part_number,part_description,qty_order,qty_supply,qty_remaining,status,eta,remarks,aging_days,aging_error")
         .order("order_date", { ascending: false })
         .limit(500);
+
+      // kalau gagal karena kolom tidak ada, fallback versi minimal
+      if (res.error && String(res.error.message || "").toLowerCase().includes("column")) {
+        res = await sb
+          .from(fromName)
+          .select("work_order,order_date,customer,model,serial_number,part_number,part_description,qty_order,qty_supply,qty_remaining,status,eta,aging_days")
+          .order("order_date", { ascending: false })
+          .limit(500);
+      }
+      return res;
     }
 
     async function loadRows() {
       try {
-        setLoadStatus("loading","Loading data dari Supabase...");
-        log("Load data dari Supabase...");
-        let { data, error } = await trySelect(VIEW);
-        if (error) {
-          const r2 = await trySelect(TABLE);
-          data = r2.data; error = r2.error; activeSource = TABLE;
-        } else activeSource = VIEW;
-
-        if (error) {
-          setLoadStatus("error","Load gagal: " + (error.message || error));
-          log("Gagal load data: " + (error.message || error)); return;
-        }
-
-        allRows = data || [];
-        buildStatusDropdown(allRows);
-        applyFilters();
-        setLoadStatus("ok", `Load berhasil ✅ (${allRows.length} rows)`);
-        log(`Selesai load ✅`);
+        await loadRowsFromSheet(); // ambil dari Google Sheet (CSV)
       } catch (e) {
         console.error(e);
-        setLoadStatus("error","Load error (cek console).");
-        log("LoadRows error: " + (e?.message || e));
+        setLoadStatus("error", "Load Sheet error: " + (e?.message || e));
+        log("Load Sheet error: " + (e?.message || e));
       }
     }
 
     $("q").addEventListener("input", applyFilters);
     $("statusFilter").addEventListener("change", applyFilters);
     $("btnReload").addEventListener("click", () => { loadRows(); });
+    $("btnNavData").addEventListener("click", () => { location.hash = "#data"; });
+    $("btnNavDash").addEventListener("click", () => { location.hash = "#dashboard"; });
+    $("cardNotCompleted").addEventListener("click", () => location.hash = "#wo-not-completed");
+    $("cardCompleted").addEventListener("click", () => location.hash = "#wo-completed");
 
-    // ============================================================
-    // UPLOAD XLSX -> UPSERT (versi final yang aman)
-    // ============================================================
-    const HEADER_MAP = {
-      WORKORDER: "work_order", TANGGALORDER: "order_date", PIC: "pic",
-      CUSTOMER: "customer", MODEL: "model", SN: "serial_number", SERIALNUMBER: "serial_number",
-      QUOTATION: "quotation", POCUST: "po_customer", PARTNUMBER: "part_number",
-      PARTDESCRIPTION: "part_description", ORDER: "qty_order", SUPPLY: "qty_supply",
-      STATUS: "status", AGING: "aging_days", REMARKS: "remarks", ETA: "eta",
-      STO: "sto", PLANT: "plant"
-    };
-
-    function mapRow(obj) {
-      const out = {};
-      for (const [k,v] of Object.entries(obj)) {
-        const key = HEADER_MAP[normHeader(k)];
-        if (!key) continue;
-        out[key] = v;
-      }
-      out.work_order = out.work_order ? String(out.work_order).trim() : null;
-      out.customer = out.customer ? String(out.customer).trim() : null;
-      out.model = out.model ? String(out.model).trim() : null;
-      out.serial_number = out.serial_number ? String(out.serial_number).trim() : null;
-      out.part_number = out.part_number ? String(out.part_number).trim() : null;
-      out.part_description = out.part_description ? String(out.part_description).trim() : null;
-      out.status = out.status ? String(out.status).trim() : null;
-      out.order_date = toISODate(out.order_date);
-      out.eta = toISODate(out.eta);
-      out.qty_order = toInt(out.qty_order);
-      out.qty_supply = toInt(out.qty_supply);
-      out.aging_days = toInt(out.aging_days);
-      if (!out.work_order || !out.order_date || !out.customer || !out.model || !out.serial_number || !out.part_number) return null;
-      return out;
-    }
-
-    async function uploadXlsx() {
-      const btn = $("btnUpload");
-      btn.disabled = true;
-      const oldText = btn.textContent;
-      btn.textContent = "Uploading...";
-
-      try {
-        clearLog();
-
-        // auth & admin check
-        const { data: { user } } = await sb.auth.getUser();
-        if (!user) { setLoadStatus("error","Upload butuh login dulu (authenticated)."); return log("Upload butuh login..."); }
-        const { data: isAdmin, error: errAdmin } = await sb.rpc("is_upload_admin");
-        if (errAdmin) { setLoadStatus("error","Gagal cek admin: " + errAdmin.message); return log("Gagal cek admin: " + errAdmin.message); }
-        if (!isAdmin) { setLoadStatus("error","Akun ini tidak punya akses upload (admin only)."); return log("Akun ini tidak punya akses upload (admin only)."); }
-
-        const file = $("fileXlsx").files?.[0];
-        if (!file) { setLoadStatus("error","Pilih file .xlsx dulu."); return log("Pilih file .xlsx dulu."); }
-
-        setLoadStatus("loading","Upload: parsing file dan mengirim ke Supabase...");
-        log("Membaca file: " + file.name);
-        const arrayBuffer = await file.arrayBuffer();
-        const wb = XLSX.read(arrayBuffer,{type:"array",cellDates:true});
-
-        const preferred = $("sheetName").value.trim();
-        const sheet = preferred && wb.Sheets[preferred] ? preferred : wb.SheetNames[0];
-        if (!sheet) { setLoadStatus("error","Sheet tidak ditemukan."); return log("Sheet tidak ditemukan."); }
-
-        log("Pakai sheet: " + sheet);
-        const ws = wb.Sheets[sheet];
-        const raw = XLSX.utils.sheet_to_json(ws,{defval:null});
-        log("Rows raw: " + raw.length);
-
-        const mapped = []; let dropped=0;
-        for (const r of raw) { const m = mapRow(r); if (m) mapped.push(m); else dropped++; }
-        log("Rows mapped: " + mapped.length + " | dropped: " + dropped);
-        if (mapped.length === 0) { setLoadStatus("error","Tidak ada row valid untuk diupload."); return; }
-
-        const batches = chunk(mapped,500);
-        log("Upsert batches: " + batches.length + " (500 rows/batch)");
-
-        for (let i=0;i<batches.length;i++) {
-          log(`Upsert batch ${i+1}/${batches.length} ...`);
-          const { error } = await sb.from(TABLE).upsert(batches[i], { onConflict: "work_order,part_number,model,serial_number,order_date" });
-          if (error) {
-            setLoadStatus("error","Upload gagal saat upsert: " + error.message);
-            log("Gagal upsert batch " + (i+1) + ": " + error.message);
-            if (String(error.message||"").toLowerCase().includes("row-level security")) {
-              log("\nFix: Pastikan RLS policy INSERT/UPDATE untuk role authenticated sudah dibuat.");
-            }
-            return;
-          }
-        }
-
-        setLoadStatus("ok","Upload selesai ✅. Data akan direfresh.");
-        log("Upload selesai ✅");
-        await loadRows();
-
-      } catch (e) {
-        console.error(e);
-        setLoadStatus("error","Upload error: " + (e?.message||e));
-        log("Upload error: " + (e?.message||e));
-      } finally {
-        btn.disabled = false;
-        btn.textContent = oldText;
-      }
-    }
-
-    // disable upload button unless file selected
-    $("fileXlsx").addEventListener("change", () => {
-      $("btnUpload").disabled = !($("fileXlsx").files?.length);
+    // === tambahan pagination + part dropdown ===
+    $("partFilter")?.addEventListener("change", () => { currentPage = 1; applyFilters(); });
+    $("pageSize")?.addEventListener("change", () => {
+      pageSize = parseInt($("pageSize").value, 10) || 25;
+      currentPage = 1;
+      applyFilters();
+    });
+    $("btnPrevPage")?.addEventListener("click", () => {
+      if (currentPage > 1) { currentPage--; applyFilters(); }
+    });
+    $("btnNextPage")?.addEventListener("click", () => {
+      currentPage++;
+      applyFilters();
     });
 
-    $("btnUpload").addEventListener("click", uploadXlsx);
+        // ===============================
+    // SUB-PAGE: WO LIST EVENTS
+    // ===============================
+
+    // close modal: klik backdrop / tombol close
+$("woBackdrop")?.addEventListener("click", () => { location.hash = "#dashboard"; });
+$("btnBackDash")?.addEventListener("click", () => { location.hash = "#dashboard"; });
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("woListSection").classList.contains("hidden")) {
+    location.hash = "#dashboard";
+  }
+});
+
+    // search di halaman list
+    $("woListSearch")?.addEventListener("input", () => {
+      const h = (location.hash || "").toLowerCase();
+      if (h === "#wo-not-completed") renderWOList("not");
+      if (h === "#wo-completed") renderWOList("completed");
+    });
+
+function routeFromHash() {
+  const h = (location.hash || "#data").toLowerCase();
+
+  const isLoggedIn = !$("btnLogout").classList.contains("hidden");
+  if (!isLoggedIn) {
+    show("dataSection", false);
+    show("dashboardSection", false);
+    show("woListSection", false);
+    return;
+  }
+
+if (h === "#dashboard") {
+  show("dashboardSection", true);
+  show("dataSection", false);
+  closeWOModal();
+  renderDashboard();
+  return;
+}
+
+if (h === "#wo-not-completed") {
+  show("dashboardSection", true);
+  show("dataSection", false);
+  renderDashboard();
+  openWOModal("not");
+  return;
+}
+
+if (h === "#wo-completed") {
+  show("dashboardSection", true);
+  show("dataSection", false);
+  renderDashboard();
+  openWOModal("completed");
+  return;
+}
+
+// default data
+closeWOModal();
+show("dashboardSection", false);
+show("dataSection", true);
+applyFilters();
+}
+
+// pasang listener SEKALI aja
+window.addEventListener("hashchange", routeFromHash);
 
     // ============================================================
     // INIT
