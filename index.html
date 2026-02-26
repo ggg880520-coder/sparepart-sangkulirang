@@ -48,13 +48,6 @@
     <nav class="bg-[#1a1a1a] w-full border-t border-gray-200">
       <div class="max-w-7xl mx-auto px-4 py-2 flex flex-col md:flex-row items-center justify-between gap-3">
         <div class="flex items-center gap-3">
-          <div class="text-[10px] font-black uppercase tracking-widest text-gray-300">
-            Part Monitoring
-          </div>
-
-          <span id="authBadge" class="text-[10px] px-3 py-1 rounded-full bg-[#2a2a2a] text-gray-200 font-bold">
-            Belum login
-          </span>
         </div>
 
         <div class="flex items-center gap-2">
@@ -233,6 +226,7 @@
 <!-- ===== DASHBOARD SECTION (muncul setelah login) ===== -->
 <div id="dashboardSection" class="hidden space-y-6">
 
+  <!-- cards -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
     <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
       <div class="text-xs font-black uppercase text-gray-500">Total WO</div>
@@ -274,15 +268,31 @@
     </div>
   </div>
 
-  <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
-    <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
-      Diagram Pie: WO Completed & WO Not Completed
+  <!-- charts: KIRI KANAN -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
+      <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
+        Diagram Pie: WO Completed & WO Not Completed
+      </div>
+      <div class="mx-auto w-full h-[320px] md:h-[360px]">
+        <canvas id="chartPie"></canvas>
+      </div>
     </div>
-    <div class="mx-auto w-[320px] h-[320px] md:w-[360px] md:h-[360px]">
-      <canvas id="chartPie"></canvas>
+
+    <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm cursor-pointer hover:bg-gray-50">
+      <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
+        Progress WO Not Completed
+      </div>
+      <div class="mx-auto w-full h-[320px] md:h-[360px]">
+        <canvas id="chartNotCompleted"></canvas>
+      </div>
+      <div class="mt-2 text-[11px] text-gray-400">
+        Klik diagram untuk buka Progress WO Not Completed
+      </div>
     </div>
   </div>
 
+  <!-- Tabel Perbandingan: PASTI DI DASHBOARD -->
   <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
     <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
       Tabel Perbandingan
@@ -300,6 +310,7 @@
       </table>
     </div>
   </div>
+
 </div>
 
 <!-- ===== WO LIST MODAL (overlay) ===== -->
@@ -419,19 +430,48 @@
       return new Date().toISOString().replace("T", " ").slice(0, 19);
     }
 
+function computeNotCompletedBreakdown(rows) {
+  // group per WO
+  const map = new Map();
+  for (const r of rows || []) {
+    const wo = String(r.work_order ?? "").trim();
+    if (!wo) continue;
+    if (!map.has(wo)) map.set(wo, []);
+    map.get(wo).push(r);
+  }
+
+  let progress = 0;
+  let noProgress = 0;
+
+  for (const items of map.values()) {
+    const isWOCompleted = items.length > 0 && items.every(x => isCompletedStatus(x.status));
+    if (isWOCompleted) continue; // fokus NOT completed
+
+    const anyLineComplete = items.some(x => isCompletedStatus(x.status));
+    const anySupply = items.some(x => Number(x.qty_supply ?? 0) > 0);
+
+    const hasProgress = anySupply || anyLineComplete;
+
+    if (hasProgress) progress++;
+    else noProgress++;
+  }
+
+  return { progress, noProgress, total: progress + noProgress };
+}
+
 function lockBodyScroll(lock) {
   document.documentElement.classList.toggle("overflow-hidden", lock); // <html>
   document.body.classList.toggle("overflow-hidden", lock);           // <body>
 }
 
-function openWOModal(mode) {
+function openWOModal(mode, filter = "all") {
   woListMode = mode;
+  woNotCompletedFilter = filter;
   woListPage = 1;
 
   lockBodyScroll(true);
   show("woListSection", true);
 
-  // reset search
   if ($("woListSearch")) $("woListSearch").value = "";
 
   renderWOList(mode);
@@ -456,6 +496,10 @@ function computeWOIsCompletedForRowGroup(rowsOfWo) {
 function renderWOList(mode) {
   const title = mode === "not" ? "WO NOT COMPLETED" : "WO COMPLETED";
   $("woListTitle").textContent = title;
+  let suffix = "";
+  if (mode === "not" && woNotCompletedFilter === "progress") suffix = " (PROGRESS)";
+  if (mode === "not" && woNotCompletedFilter === "noprogress") suffix = " (NO PROGRESS)";
+  $("woListTitle").textContent = title + suffix;
 
   const q = ($("woListSearch")?.value || "").trim().toLowerCase();
 
@@ -471,9 +515,19 @@ function renderWOList(mode) {
   // pilih WO sesuai mode
   let flat = [];
   for (const [wo, items] of map.entries()) {
-    const isComp = computeWOIsCompletedForRowGroup(items);
-    if (mode === "completed" && !isComp) continue;
-    if (mode === "not" && isComp) continue;
+  const isComp = computeWOIsCompletedForRowGroup(items);
+  if (mode === "completed" && !isComp) continue;
+  if (mode === "not" && isComp) continue;
+
+  // ===== FILTER KHUSUS NOT COMPLETED =====
+  if (mode === "not" && woNotCompletedFilter !== "all") {
+    const anyLineComplete = items.some(x => isCompletedStatus(x.status));
+    const anySupply = items.some(x => Number(x.qty_supply ?? 0) > 0);
+    const hasProgress = anySupply || anyLineComplete;
+
+    if (woNotCompletedFilter === "progress" && !hasProgress) continue;
+    if (woNotCompletedFilter === "noprogress" && hasProgress) continue;
+  }
     flat.push(...items);
   }
 
@@ -550,49 +604,106 @@ function renderWOList(mode) {
     }
 
     let __pieChart = null;
+    let __notCompletedChart = null;
 
-    function renderDashboard() {
-      const stats = computeWOStats(allRows);
+function renderDashboard() {
+  const stats = computeWOStats(allRows);
 
-      $("woCompleted").textContent = stats.completed;
-      $("woNotCompleted").textContent = stats.notCompleted;
-      $("woTotal").textContent = stats.total;
+  $("woCompleted").textContent = stats.completed;
+  $("woNotCompleted").textContent = stats.notCompleted;
+  $("woTotal").textContent = stats.total;
 
-      const pct = (n) => stats.total ? ((n / stats.total) * 100).toFixed(1) + "%" : "0%";
+  const pct = (n) => stats.total ? ((n / stats.total) * 100).toFixed(1) + "%" : "0%";
 
-      $("woSummaryTbody").innerHTML = `
-        <tr>
-          <td class="p-2 font-bold">Not Completed</td>
-          <td class="p-2 text-right font-black">${stats.notCompleted}</td>
-          <td class="p-2 text-right">${pct(stats.notCompleted)}</td>
-        </tr>
-        <tr>
-          <td class="p-2 font-bold">Completed</td>
-          <td class="p-2 text-right font-black">${stats.completed}</td>
-          <td class="p-2 text-right">${pct(stats.completed)}</td>
-        </tr>
-        <tr>
-          <td class="p-2 font-black">Total</td>
-          <td class="p-2 text-right font-black">${stats.total}</td>
-          <td class="p-2 text-right">100%</td>
-        </tr>
-      `;
+  $("woSummaryTbody").innerHTML = `
+    <tr>
+      <td class="p-2 font-bold">Not Completed</td>
+      <td class="p-2 text-right font-black">${stats.notCompleted}</td>
+      <td class="p-2 text-right">${pct(stats.notCompleted)}</td>
+    </tr>
+    <tr>
+      <td class="p-2 font-bold">Completed</td>
+      <td class="p-2 text-right font-black">${stats.completed}</td>
+      <td class="p-2 text-right">${pct(stats.completed)}</td>
+    </tr>
+    <tr>
+      <td class="p-2 font-black">Total</td>
+      <td class="p-2 text-right font-black">${stats.total}</td>
+      <td class="p-2 text-right">100%</td>
+    </tr>
+  `;
 
-      if (__pieChart) __pieChart.destroy();
-
-      __pieChart = new Chart($("chartPie"), {
-        type: "pie",
-        data: {
-          labels: ["Not Completed", "Completed"],
-          datasets: [{ data: [stats.notCompleted, stats.completed] }]
-        },
-        options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: "bottom" } }
+  // ===== PIE (Completed vs Not Completed)
+  if (__pieChart) __pieChart.destroy();
+  __pieChart = new Chart($("chartPie"), {
+    type: "pie",
+    data: {
+      labels: ["Not Completed", "Completed"],
+      datasets: [{ data: [stats.notCompleted, stats.completed] }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom" },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+              const val = ctx.parsed;
+              const pct = total ? ((val/total)*100).toFixed(1) : "0.0";
+              return `${ctx.label}: ${pct}%`;
+            },
+            afterLabel: (ctx) => `Jumlah: ${ctx.parsed}`
+          }
+        }
       }
-      });
     }
+  });
+
+  // ===== DONUT (Not Completed breakdown)
+  const el = $("chartNotCompleted");
+  if (!el) return; // <- biar gak error kalau canvas belum dipasang
+
+  const br = computeNotCompletedBreakdown(allRows);
+
+  if (__notCompletedChart) __notCompletedChart.destroy();
+  __notCompletedChart = new Chart(el, {
+    type: "doughnut",
+    data: {
+      labels: ["Progress (ada supply/complete)", "No Progress (belum ada supply)"],
+      datasets: [{ data: [br.progress, br.noProgress] }]
+    },
+    options: {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { position: "bottom" },
+    tooltip: {
+      callbacks: {
+        label: (ctx) => {
+          const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+          const val = ctx.parsed;
+          const pct = total ? ((val/total)*100).toFixed(1) : "0.0";
+          return `${ctx.label}: ${pct}%`;
+        },
+        afterLabel: (ctx) => `Jumlah: ${ctx.parsed}`
+      }
+    }
+  },
+  onClick: (evt, elements) => {
+  if (!elements || !elements.length) return;
+
+  const idx = elements[0].index; // 0 = label pertama, 1 = label kedua
+
+  // pastikan urutan label chart kamu:
+  // labels: ["Progress ...", "No Progress ..."]
+  if (idx === 0) location.hash = "#wo-not-completed-progress";
+  if (idx === 1) location.hash = "#wo-not-completed-noprogress";
+}
+}
+  });
+}
 
     // log umum: tidak tampil di UI
     function log(msg) {
@@ -1086,6 +1197,7 @@ $("woListSearch")?.addEventListener("input", () => {
     let pageSize = 25;
     let currentPage = 1;
     let activeSource = VIEW;
+    let woNotCompletedFilter = "all"; // "all" | "progress" | "noprogress"
 
       function buildStatusDropdown(rows) {
         const set = new Set(rows.map(r => String(r.status || "").trim()).filter(Boolean));
@@ -1312,7 +1424,7 @@ if (h === "#wo-not-completed") {
   show("dashboardSection", true);
   show("dataSection", false);
   renderDashboard();
-  openWOModal("not");
+  openWOModal("not", "all");
   return;
 }
 
@@ -1321,6 +1433,22 @@ if (h === "#wo-completed") {
   show("dataSection", false);
   renderDashboard();
   openWOModal("completed");
+  return;
+}
+
+if (h === "#wo-not-completed-progress") {
+  show("dashboardSection", true);
+  show("dataSection", false);
+  renderDashboard();
+  openWOModal("not", "progress");
+  return;
+}
+
+if (h === "#wo-not-completed-noprogress") {
+  show("dashboardSection", true);
+  show("dataSection", false);
+  renderDashboard();
+  openWOModal("not", "noprogress");
   return;
 }
 
