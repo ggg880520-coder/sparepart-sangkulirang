@@ -272,7 +272,7 @@
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
       <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
-        Diagram Pie: WO Completed & WO Not Completed
+        STATUS WO (%)
       </div>
       <div class="mx-auto w-full h-[320px] md:h-[360px]">
         <canvas id="chartPie"></canvas>
@@ -280,8 +280,8 @@
     </div>
 
     <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm cursor-pointer hover:bg-gray-50">
-      <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
-        Progress WO Not Completed
+      <div class="text-xs font-black tracking-widest text-gray-600 mb-3">
+        Progress WO Not Completed (%)
       </div>
       <div class="mx-auto w-full h-[320px] md:h-[360px]">
         <canvas id="chartNotCompleted"></canvas>
@@ -292,24 +292,17 @@
     </div>
   </div>
 
-  <!-- Tabel Perbandingan: PASTI DI DASHBOARD -->
   <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
-    <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
-      Tabel Perbandingan
-    </div>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="text-gray-600 uppercase font-black">
-          <tr>
-            <th class="p-2 text-left">Kategori</th>
-            <th class="p-2 text-right">Jumlah WO</th>
-            <th class="p-2 text-right">Persentase</th>
-          </tr>
-        </thead>
-        <tbody id="woSummaryTbody" class="divide-y divide-gray-100"></tbody>
-      </table>
-    </div>
+  <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
+    Top Aging WO
   </div>
+  <div class="w-full h-[360px]">
+    <canvas id="chartAgingTop"></canvas>
+  </div>
+  <div class="mt-2 text-[11px] text-gray-400">
+    Klik bar untuk buka WO tersebut.
+  </div>
+</div>
 
 </div>
 
@@ -422,6 +415,26 @@
     // ============================================================
     const $ = id => document.getElementById(id);
 
+        // ===== GLOBAL STATE (taruh paling atas) =====
+    let allRows = [];
+
+    let woListMode = null;       // "not" / "completed"
+    let woNotCompletedFilter = "all";
+    let woListPage = 1;
+    let woListPageSize = 25;
+
+    let pageSize = 25;
+    let currentPage = 1;
+
+    let __pieChart = null;
+    let __notCompletedChart = null;
+    let __agingChart = null;
+
+    let __woQuickSearch = "";
+
+    let __selectedWO = "";               // WO yang dipilih dari chart
+    let __woLineStatusFilter = "all";    // "all" | "notcompleted"
+
     // ===== Runtime log (tidak ditampilkan) =====
     const runtimeLog = [];
     window.__getRuntimeLog = () => runtimeLog.join("\n"); // cek via console
@@ -476,6 +489,10 @@ function openWOModal(mode, filter = "all") {
 
   renderWOList(mode);
 
+  // reset state klik bar supaya next buka modal normal lagi
+  __selectedWO = "";
+  __woLineStatusFilter = "all";
+
   if ($("woListSearch")) setTimeout(() => $("woListSearch").focus(), 0);
 }
 
@@ -495,10 +512,13 @@ function computeWOIsCompletedForRowGroup(rowsOfWo) {
 
 function renderWOList(mode) {
   const title = mode === "not" ? "WO NOT COMPLETED" : "WO COMPLETED";
-  $("woListTitle").textContent = title;
+
   let suffix = "";
-  if (mode === "not" && woNotCompletedFilter === "progress") suffix = " (PROGRESS)";
-  if (mode === "not" && woNotCompletedFilter === "noprogress") suffix = " (NO PROGRESS)";
+  if (mode === "not" && woNotCompletedFilter === "progress") suffix += " (PROGRESS)";
+  if (mode === "not" && woNotCompletedFilter === "noprogress") suffix += " (NO PROGRESS)";
+  if (__selectedWO) suffix += ` (WO: ${__selectedWO})`;
+  if (__woLineStatusFilter === "notcompleted") suffix += " (LINE NOT COMPLETED)";
+
   $("woListTitle").textContent = title + suffix;
 
   const q = ($("woListSearch")?.value || "").trim().toLowerCase();
@@ -514,12 +534,16 @@ function renderWOList(mode) {
 
   // pilih WO sesuai mode
   let flat = [];
-  for (const [wo, items] of map.entries()) {
+for (const [wo, items] of map.entries()) {
+
+  // ✅ kalau user klik bar chart, hanya WO itu yang ditampilkan
+  if (__selectedWO && wo !== __selectedWO) continue;
+
   const isComp = computeWOIsCompletedForRowGroup(items);
   if (mode === "completed" && !isComp) continue;
   if (mode === "not" && isComp) continue;
 
-  // ===== FILTER KHUSUS NOT COMPLETED =====
+  // ===== FILTER KHUSUS NOT COMPLETED (progress/noprogress) tetap jalan =====
   if (mode === "not" && woNotCompletedFilter !== "all") {
     const anyLineComplete = items.some(x => isCompletedStatus(x.status));
     const anySupply = items.some(x => Number(x.qty_supply ?? 0) > 0);
@@ -528,8 +552,15 @@ function renderWOList(mode) {
     if (woNotCompletedFilter === "progress" && !hasProgress) continue;
     if (woNotCompletedFilter === "noprogress" && hasProgress) continue;
   }
-    flat.push(...items);
+
+  // ✅ kalau klik bar: hanya line sparepart yang statusnya BELUM completed
+  let lines = items;
+  if (__woLineStatusFilter === "notcompleted") {
+    lines = items.filter(x => !isCompletedStatus(x.status));
   }
+
+  flat.push(...lines);
+}
 
   // search
   if (q) {
@@ -603,8 +634,84 @@ function renderWOList(mode) {
       return { completed, notCompleted, total: completed + notCompleted };
     }
 
-    let __pieChart = null;
-    let __notCompletedChart = null;
+    if (!window.__percentLabelsRegistered) {
+      window.__percentLabelsRegistered = true;
+
+      Chart.register({
+        id: "percentLabels",
+        afterDatasetsDraw(chart) {
+          const t = chart.config.type;
+          if (t !== "pie" && t !== "doughnut") return;
+
+          const { ctx } = chart;
+          const dataset = chart.data.datasets[0];
+          const meta = chart.getDatasetMeta(0);
+          const total = (dataset.data || []).reduce((a, b) => a + Number(b || 0), 0);
+          if (!total) return;
+
+          ctx.save();
+
+          meta.data.forEach((arc, i) => {
+            const val = Number(dataset.data[i] || 0);
+            if (!val) return;
+
+            const pct = (val / total) * 100;
+            if (pct < 3) return; // ubah ke 1 kalau mau lebih banyak muncul
+
+            // posisi label:
+            // - pie: di tengah slice
+            // - doughnut: agak ke tengah ring biar enak
+            const p = arc.getCenterPoint ? arc.getCenterPoint() : arc.tooltipPosition();
+            const x = p.x, y = p.y;
+
+            const text = pct.toFixed(1) + "%";
+
+            ctx.font = "700 12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            // biar kebaca di warna slice
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "rgba(0,0,0,0.6)";
+            ctx.fillStyle = "#fff";
+
+            ctx.strokeText(text, x, y);
+            ctx.fillText(text, x, y);
+          });
+
+          ctx.restore();
+        }
+      });
+    }
+
+function computeTopAgingNotCompleted(rows, topN = 10) {
+  const map = new Map(); // wo -> items
+
+  for (const r of rows || []) {
+    const wo = String(r.work_order ?? "").trim();
+    if (!wo) continue;
+    if (!map.has(wo)) map.set(wo, []);
+    map.get(wo).push(r);
+  }
+
+  const out = [];
+  for (const [wo, items] of map.entries()) {
+    // WO dianggap completed kalau semua line completed
+    const isWOCompleted = items.length > 0 && items.every(x => isCompletedStatus(x.status));
+    if (isWOCompleted) continue; // hanya NOT completed
+
+    // aging tertinggi per WO (ambil max dari item)
+    const maxAging = Math.max(
+      ...items.map(x => Number(x.aging_days ?? -1)).filter(n => Number.isFinite(n))
+    );
+
+    if (maxAging < 0) continue;
+    out.push({ wo, aging: maxAging });
+  }
+
+  out.sort((a, b) => b.aging - a.aging);
+  return out.slice(0, topN);
+}
 
 function renderDashboard() {
   const stats = computeWOStats(allRows);
@@ -613,27 +720,7 @@ function renderDashboard() {
   $("woNotCompleted").textContent = stats.notCompleted;
   $("woTotal").textContent = stats.total;
 
-  const pct = (n) => stats.total ? ((n / stats.total) * 100).toFixed(1) + "%" : "0%";
-
-  $("woSummaryTbody").innerHTML = `
-    <tr>
-      <td class="p-2 font-bold">Not Completed</td>
-      <td class="p-2 text-right font-black">${stats.notCompleted}</td>
-      <td class="p-2 text-right">${pct(stats.notCompleted)}</td>
-    </tr>
-    <tr>
-      <td class="p-2 font-bold">Completed</td>
-      <td class="p-2 text-right font-black">${stats.completed}</td>
-      <td class="p-2 text-right">${pct(stats.completed)}</td>
-    </tr>
-    <tr>
-      <td class="p-2 font-black">Total</td>
-      <td class="p-2 text-right font-black">${stats.total}</td>
-      <td class="p-2 text-right">100%</td>
-    </tr>
-  `;
-
-  // ===== PIE (Completed vs Not Completed)
+  // ===== PIE
   if (__pieChart) __pieChart.destroy();
   __pieChart = new Chart($("chartPie"), {
     type: "pie",
@@ -646,63 +733,103 @@ function renderDashboard() {
       maintainAspectRatio: false,
       plugins: {
         legend: { position: "bottom" },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => {
-              const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
-              const val = ctx.parsed;
-              const pct = total ? ((val/total)*100).toFixed(1) : "0.0";
-              return `${ctx.label}: ${pct}%`;
-            },
-            afterLabel: (ctx) => `Jumlah: ${ctx.parsed}`
-          }
+        tooltip: { callbacks: { label: (ctx) => `Jumlah: ${ctx.parsed}` } }
+      }
+    }
+  });
+
+  // ===== DONUT
+  const elDonut = $("chartNotCompleted");
+  if (elDonut) {
+    const br = computeNotCompletedBreakdown(allRows);
+
+    if (__notCompletedChart) __notCompletedChart.destroy();
+    __notCompletedChart = new Chart(elDonut, {
+      type: "doughnut",
+      data: {
+        labels: ["Progress (ada supply/complete)", "No Progress (belum ada supply)"],
+        datasets: [{ data: [br.progress, br.noProgress] }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "50%",
+        plugins: {
+          legend: { position: "bottom" },
+          tooltip: { callbacks: { label: (ctx) => `Jumlah: ${ctx.parsed}` } }
+        },
+        onClick: (evt, elements) => {
+          if (!elements || !elements.length) return;
+          const idx = elements[0].index;
+          if (idx === 0) location.hash = "#wo-not-completed-progress";
+          if (idx === 1) location.hash = "#wo-not-completed-noprogress";
         }
       }
-    }
-  });
+    });
+  }
 
-  // ===== DONUT (Not Completed breakdown)
-  const el = $("chartNotCompleted");
-  if (!el) return; // <- biar gak error kalau canvas belum dipasang
+  // ===== BAR: Ranking Aging (INI HARUS DI DALAM renderDashboard)
+  const elAging = $("chartAgingTop");
+  if (elAging) {
+    const top = computeTopAgingNotCompleted(allRows, 10);
+    const labels = top.map(x => x.wo);
+    const values = top.map(x => x.aging);
 
-  const br = computeNotCompletedBreakdown(allRows);
+    if (__agingChart) __agingChart.destroy();
 
-  if (__notCompletedChart) __notCompletedChart.destroy();
-  __notCompletedChart = new Chart(el, {
-    type: "doughnut",
-    data: {
-      labels: ["Progress (ada supply/complete)", "No Progress (belum ada supply)"],
-      datasets: [{ data: [br.progress, br.noProgress] }]
-    },
-    options: {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: { position: "bottom" },
-    tooltip: {
-      callbacks: {
-        label: (ctx) => {
-          const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
-          const val = ctx.parsed;
-          const pct = total ? ((val/total)*100).toFixed(1) : "0.0";
-          return `${ctx.label}: ${pct}%`;
-        },
-        afterLabel: (ctx) => `Jumlah: ${ctx.parsed}`
-      }
-    }
+__agingChart = new Chart(elAging, {
+  type: "bar",
+  data: {
+    labels,
+    datasets: [{
+      label: "Aging (hari)",
+      data: values,
+      borderRadius: 10,           // bar rounded
+      barThickness: 18,           // tebel enak
+      maxBarThickness: 20
+    }]
   },
-  onClick: (evt, elements) => {
-  if (!elements || !elements.length) return;
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: "y",
+    layout: { padding: { left: 6, right: 12, top: 6, bottom: 0 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          title: (items) => `WO: ${items[0].label}`,
+          label: (ctx) => `Aging: ${ctx.parsed.x} hari`
+        }
+      }
+    },
+    scales: {
+      x: {
+        beginAtZero: true,
+        ticks: { precision: 0 },
+        grid: { color: "rgba(0,0,0,0.06)" }
+      },
+      y: {
+        grid: { display: false },
+        ticks: { autoSkip: false, font: { weight: "700" } }
+      }
+    },
+    onHover: (evt, elements) => {
+      evt.native.target.style.cursor = elements?.length ? "pointer" : "default";
+    },
+    onClick: (evt, elements) => {
+      if (!elements || !elements.length) return;
+      const idx = elements[0].index;
+      const wo = labels[idx];
 
-  const idx = elements[0].index; // 0 = label pertama, 1 = label kedua
-
-  // pastikan urutan label chart kamu:
-  // labels: ["Progress ...", "No Progress ..."]
-  if (idx === 0) location.hash = "#wo-not-completed-progress";
-  if (idx === 1) location.hash = "#wo-not-completed-noprogress";
-}
-}
-  });
+      // ✅ klik bar: buka modal WO tsb, tapi hanya line yang belum completed
+      __selectedWO = wo;
+      __woLineStatusFilter = "notcompleted";
+      location.hash = "#wo-not-completed";
+    }
+  }
+});
+  }
 }
 
     // log umum: tidak tampil di UI
@@ -1190,14 +1317,6 @@ $("woListSearch")?.addEventListener("input", () => {
     // ============================================================
     // LOAD + RENDER TABLE
     // ============================================================
-    let allRows = [];
-    let woListMode = null;      // "not" / "completed"
-    let woListPage = 1;
-    let woListPageSize = 25;
-    let pageSize = 25;
-    let currentPage = 1;
-    let activeSource = VIEW;
-    let woNotCompletedFilter = "all"; // "all" | "progress" | "noprogress"
 
       function buildStatusDropdown(rows) {
         const set = new Set(rows.map(r => String(r.status || "").trim()).filter(Boolean));
@@ -1412,51 +1531,59 @@ function routeFromHash() {
     return;
   }
 
-if (h === "#dashboard") {
-  show("dashboardSection", true);
-  show("dataSection", false);
+  if (h === "#dashboard") {
+    show("dashboardSection", true);
+    show("dataSection", false);
+    closeWOModal();
+    renderDashboard();
+    return;
+  }
+
+  if (h === "#wo-not-completed") {
+    show("dashboardSection", true);
+    show("dataSection", false);
+    renderDashboard();
+    openWOModal("not", "all");
+
+    // ✅ quick search harus DI SINI
+    if (__woQuickSearch) {
+      $("woListSearch").value = __woQuickSearch;
+      __woQuickSearch = "";
+      woListPage = 1;
+      renderWOList("not");
+    }
+    return;
+  }
+
+  if (h === "#wo-completed") {
+    show("dashboardSection", true);
+    show("dataSection", false);
+    renderDashboard();
+    openWOModal("completed");
+    return;
+  }
+
+  if (h === "#wo-not-completed-progress") {
+    show("dashboardSection", true);
+    show("dataSection", false);
+    renderDashboard();
+    openWOModal("not", "progress");
+    return;
+  }
+
+  if (h === "#wo-not-completed-noprogress") {
+    show("dashboardSection", true);
+    show("dataSection", false);
+    renderDashboard();
+    openWOModal("not", "noprogress");
+    return;
+  }
+
+  // default data
   closeWOModal();
-  renderDashboard();
-  return;
-}
-
-if (h === "#wo-not-completed") {
-  show("dashboardSection", true);
-  show("dataSection", false);
-  renderDashboard();
-  openWOModal("not", "all");
-  return;
-}
-
-if (h === "#wo-completed") {
-  show("dashboardSection", true);
-  show("dataSection", false);
-  renderDashboard();
-  openWOModal("completed");
-  return;
-}
-
-if (h === "#wo-not-completed-progress") {
-  show("dashboardSection", true);
-  show("dataSection", false);
-  renderDashboard();
-  openWOModal("not", "progress");
-  return;
-}
-
-if (h === "#wo-not-completed-noprogress") {
-  show("dashboardSection", true);
-  show("dataSection", false);
-  renderDashboard();
-  openWOModal("not", "noprogress");
-  return;
-}
-
-// default data
-closeWOModal();
-show("dashboardSection", false);
-show("dataSection", true);
-applyFilters();
+  show("dashboardSection", false);
+  show("dataSection", true);
+  applyFilters();
 }
 
 // pasang listener SEKALI aja
