@@ -96,6 +96,7 @@
         <div class="flex items-center justify-between mb-4">
           <div class="text-xs font-black uppercase tracking-widest text-gray-600">Login / Daftar</div>
         </div>
+        <div id="loginMsg" class="mt-2 text-[11px] font-bold"></div>
 
         <div class="space-y-3">
           <input id="email"
@@ -432,8 +433,27 @@
 
     let __woQuickSearch = "";
 
-    let __selectedWO = "";               // WO yang dipilih dari chart
-    let __woLineStatusFilter = "all";    // "all" | "notcompleted"
+function setLoginMsg(type, text) {
+  const el = $("loginMsg");
+  if (!el) return; // <-- ini yang benar (kalau elemen tidak ada baru return)
+
+  el.textContent = text || "";
+  el.className = "mt-2 text-[11px] font-bold " + (
+    type === "error" ? "text-red-600" :
+    type === "ok"    ? "text-green-600" :
+    "text-gray-600"
+  );
+}
+
+function authFriendlyMessage(err) {
+  const raw = String(err?.message || err || "");
+  const msg = raw.toLowerCase();
+
+  if (msg.includes("invalid login credentials")) return "Email atau password salah.";
+  if (msg.includes("email not confirmed")) return "Email belum dikonfirmasi. Cek inbox/spam dulu.";
+  if (msg.includes("too many requests") || msg.includes("rate limit")) return "Terlalu banyak percobaan. Coba lagi beberapa menit.";
+  return "Login gagal: " + raw;
+}
 
     // ===== Runtime log (tidak ditampilkan) =====
     const runtimeLog = [];
@@ -499,6 +519,10 @@ function openWOModal(mode, filter = "all") {
 function closeWOModal() {
   lockBodyScroll(false);
   show("woListSection", false);
+
+  // reset state klik chart setelah modal ditutup
+  __selectedWO = "";
+  __woLineStatusFilter = "all";
 }
 
     function isCompletedStatus(s) {
@@ -784,8 +808,8 @@ __agingChart = new Chart(elAging, {
     datasets: [{
       label: "Aging (hari)",
       data: values,
-      borderRadius: 10,           // bar rounded
-      barThickness: 18,           // tebel enak
+      borderRadius: 10,
+      barThickness: 18,
       maxBarThickness: 20
     }]
   },
@@ -793,7 +817,10 @@ __agingChart = new Chart(elAging, {
     responsive: true,
     maintainAspectRatio: false,
     indexAxis: "y",
-    layout: { padding: { left: 6, right: 12, top: 6, bottom: 0 } },
+
+    // kasih ruang kanan biar angka gak kepotong
+    layout: { padding: { left: 6, right: 40, top: 6, bottom: 0 } },
+
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -806,12 +833,25 @@ __agingChart = new Chart(elAging, {
     scales: {
       x: {
         beginAtZero: true,
-        ticks: { precision: 0 },
+        ticks: {
+          precision: 0,
+          callback: (v) => `${v} hari`   // biar orang ngerti ini aging
+        },
+        title: {
+          display: true,
+          text: "Aging",
+          font: { weight: "800" }
+        },
         grid: { color: "rgba(0,0,0,0.06)" }
       },
       y: {
-        grid: { display: false },
-        ticks: { autoSkip: false, font: { weight: "700" } }
+        ticks: { autoSkip: false, font: { weight: "800" } },
+        title: {
+          display: true,
+          text: "WO",
+          font: { weight: "800" }
+        },
+        grid: { display: false }
       }
     },
     onHover: (evt, elements) => {
@@ -821,13 +861,51 @@ __agingChart = new Chart(elAging, {
       if (!elements || !elements.length) return;
       const idx = elements[0].index;
       const wo = labels[idx];
-
-      // ✅ klik bar: buka modal WO tsb, tapi hanya line yang belum completed
       __selectedWO = wo;
       __woLineStatusFilter = "notcompleted";
       location.hash = "#wo-not-completed";
     }
-  }
+  },
+
+  // ✅ INI YANG BIKIN ANGKA MUNCUL TANPA HOVER
+  plugins: [{
+    id: "barValueLabels",
+    afterDatasetsDraw(chart) {
+      const { ctx, chartArea } = chart;
+      const meta = chart.getDatasetMeta(0);
+      const data = chart.data.datasets[0]?.data || [];
+
+      ctx.save();
+      ctx.font = "700 12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      ctx.textBaseline = "middle";
+
+      meta.data.forEach((bar, i) => {
+        const v = Number(data[i] ?? 0);
+        if (!Number.isFinite(v)) return;
+
+        // posisi ujung bar (horizontal)
+        const props = bar.getProps(["x", "y", "base"], true);
+        let x = props.x + 10;  // taruh sedikit di kanan ujung bar
+        const y = props.y;
+
+        const text = `${v}`;
+
+        // kalau kepotong kanan, taruh di dalam bar
+        const w = ctx.measureText(text).width;
+        if (x + w > chartArea.right - 4) {
+          x = props.x - 10;
+          ctx.textAlign = "right";
+        } else {
+          ctx.textAlign = "left";
+        }
+
+        ctx.fillStyle = "#111827"; // biar jelas
+        ctx.fillText(text, x, y);
+      });
+
+      ctx.restore();
+    }
+  }]
 });
   }
 }
@@ -1202,12 +1280,12 @@ __agingChart = new Chart(elAging, {
           const res = await sb.auth.signInWithPassword({ email, password });
           if (res.error) throw res.error;
           return res;
-        } catch (err) {
-          const msg = String(err?.message || err).toLowerCase();
-          // retry only for LockManager/timeout related errors
-          if (i === tries - 1 || (!msg.includes('lock') && !msg.includes('timed out'))) throw err;
-          await new Promise(r => setTimeout(r, delayMs));
-        }
+          } catch (err) {
+            console.error(err);
+            setLoginMsg("error", authFriendlyMessage(err));
+            log("Login error: " + (err?.message || err));
+            setLoadStatus("error","Login error: " + (err?.message||err));
+          }
       }
     }
 
@@ -1217,12 +1295,12 @@ __agingChart = new Chart(elAging, {
     async function refreshAuthUI() {
       try {
         const { data: { session } } = await sb.auth.getSession();
-        const user = session?.user;
+        const badge = $("authBadge");
         if (user) {
-          $("authBadge").textContent = "Login: " + user.email;
+          if (badge) badge.textContent = "Login: " + user.email;
           $("btnLogout").classList.remove("hidden");
         } else {
-          $("authBadge").textContent = "Belum login";
+          if (badge) badge.textContent = "";
           $("btnLogout").classList.add("hidden");
         }
       } catch (e) {
@@ -1242,17 +1320,37 @@ __agingChart = new Chart(elAging, {
 
       try {
         clearLog();
+        setLoginMsg("info", "");
         const email = $("email").value.trim();
         const password = $("password").value;
-        if (!email || !password) { log("Isi email & password dulu."); return; }
+        if (!email || !password) {
+          setLoginMsg("error", "Isi email & password dulu.");
+          log("Isi email & password dulu.");
+          return;
+        }
 
         // use retry wrapper to mitigate Navigator LockManager timeouts
         const { data, error } = await signInWithRetry(email, password);
-        if (error) { log("Login gagal: " + error.message); return; }
-        $("authBadge").textContent = "Login: " + (data.user?.email || email);
+        if (error) {
+          const msg = String(error.message || "").toLowerCase();
+
+          if (msg.includes("invalid login credentials")) {
+            setLoginMsg("error", "Email atau password salah.");
+            log("Email atau password salah.");
+            return;
+          }
+
+          // default error lainnya
+          setLoginMsg("error", "Login gagal: " + error.message);
+          log("Login gagal: " + error.message);
+          return;
+        }
+        const badge = $("authBadge");
+        if (badge) badge.textContent = "Login: " + (data.user?.email || email);
         $("btnLogout").classList.remove("hidden");
 
         log("Login sukses ✅");
+        setLoginMsg("ok", "Login sukses ✅");
         clearLoginInputs();
 
         await refreshAuthUI();
@@ -1266,6 +1364,19 @@ __agingChart = new Chart(elAging, {
         btn.disabled = false; btn.textContent = oldText; loginInFlight = false;
       }
     };
+    // ENTER di email/password = klik tombol Login
+    ["email", "password"].forEach((id) => {
+      $(id)?.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+
+        const email = $("email")?.value?.trim();
+        const password = $("password")?.value;
+        if (!email || !password) return;
+
+        e.preventDefault();
+        $("btnLogin")?.click();
+      });
+    });
 
     $("btnSignup").addEventListener("click", async () => {
       clearLog();
