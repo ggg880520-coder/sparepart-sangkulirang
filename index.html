@@ -141,10 +141,29 @@
           class="w-full md:w-68 px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]"
           placeholder="Cari WO / Part Number / Model / Customer / SN" />
 
-        <select id="statusFilter"
-          class="w-full md:w-60 px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]">
-          <option value="ALL">Semua Status</option>
-        </select>
+        <!-- STATUS FILTER (checkbox dropdown) -->
+        <div id="statusFilterWrap" class="relative w-full md:w-60">
+          <button id="statusBtn" type="button"
+            class="w-full px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm text-left
+                  outline-none focus:border-[#ffcc00] flex items-center justify-between">
+            <span id="statusBtnText" class="truncate">Semua Status</span>
+            <span class="ml-2 text-gray-500 font-black">▾</span>
+          </button>
+
+          <div id="statusMenu"
+            class="hidden absolute z-30 mt-2 w-full bg-white border border-gray-200 rounded-2xl shadow-lg p-2">
+            
+            <label class="flex items-center gap-2 px-2 py-2 hover:bg-gray-50 rounded-xl cursor-pointer">
+              <input id="statusAll" type="checkbox" class="h-4 w-4 accent-[#ffcc00]">
+              <span class="text-sm font-black text-gray-700">Semua Status</span>
+            </label>
+
+            <div class="my-2 h-px bg-gray-200"></div>
+
+            <!-- list checkbox status akan di-generate di sini -->
+            <div id="statusOptions" class="max-h-56 overflow-y-auto pr-1"></div>
+          </div>
+        </div>
 
         <select id="partFilter"
           class="w-full md:w-60 px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]">
@@ -419,6 +438,9 @@
         // ===== GLOBAL STATE (taruh paling atas) =====
     let allRows = [];
 
+    let statusValues = [];                 // list semua status unik
+    let selectedStatuses = new Set();      // status yang dicentang
+
     let woListMode = null;       // "not" / "completed"
     let woNotCompletedFilter = "all";
     let woListPage = 1;
@@ -432,6 +454,19 @@
     let __agingChart = null;
 
     let __woQuickSearch = "";
+
+  $("statusBtn")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  $("statusMenu")?.classList.toggle("hidden");
+});
+
+// klik luar buat nutup
+document.addEventListener("click", (e) => {
+  const wrap = $("statusFilterWrap");
+  const menu = $("statusMenu");
+  if (!wrap || !menu) return;
+  if (!wrap.contains(e.target)) menu.classList.add("hidden");
+});
 
 function setLoginMsg(type, text) {
   const el = $("loginMsg");
@@ -1086,8 +1121,6 @@ __agingChart = new Chart(elAging, {
       allRows = rows;
       renderDashboard();
       buildStatusDropdown(allRows);
-      if ($("statusFilter").value === "ALL") {
-      }
 
       pageSize = parseInt($("pageSize")?.value, 10) || 25;
       currentPage = 1;
@@ -1151,7 +1184,14 @@ __agingChart = new Chart(elAging, {
     function clearDataUI() {
       allRows = [];
       $("rowCount").textContent = "0";
-      $("statusFilter").innerHTML = '<option value="ALL">Semua Status</option>';
+      statusValues = [];
+      selectedStatuses.clear();
+      $("statusBtnText") && ($("statusBtnText").textContent = "Semua Status");
+      $("statusOptions") && ($("statusOptions").innerHTML = "");
+      if ($("statusAll")) {
+        $("statusAll").checked = false;
+        $("statusAll").indeterminate = false;
+      }
       $("tbody").innerHTML = `
         <tr>
           <td colspan="14" class="p-6 text-center text-gray-400">
@@ -1280,12 +1320,13 @@ __agingChart = new Chart(elAging, {
           const res = await sb.auth.signInWithPassword({ email, password });
           if (res.error) throw res.error;
           return res;
-          } catch (err) {
-            console.error(err);
-            setLoginMsg("error", authFriendlyMessage(err));
-            log("Login error: " + (err?.message || err));
-            setLoadStatus("error","Login error: " + (err?.message||err));
-          }
+        } catch (err) {
+          const msg = String(err?.message || err).toLowerCase();
+          const retryable = msg.includes("lock") || msg.includes("timed out");
+
+          if (i === tries - 1 || !retryable) throw err;
+          await new Promise(r => setTimeout(r, delayMs));
+        }
       }
     }
 
@@ -1295,14 +1336,12 @@ __agingChart = new Chart(elAging, {
     async function refreshAuthUI() {
       try {
         const { data: { session } } = await sb.auth.getSession();
+        const user = session?.user;
+
         const badge = $("authBadge");
-        if (user) {
-          if (badge) badge.textContent = "Login: " + user.email;
-          $("btnLogout").classList.remove("hidden");
-        } else {
-          if (badge) badge.textContent = "";
-          $("btnLogout").classList.add("hidden");
-        }
+        if (badge) badge.textContent = user ? ("Login: " + (user.email || "")) : "";
+
+        $("btnLogout")?.classList.toggle("hidden", !user);
       } catch (e) {
         console.error(e);
         setLoadStatus("error", "Auth UI error (cek console).");
@@ -1429,13 +1468,92 @@ $("woListSearch")?.addEventListener("input", () => {
     // LOAD + RENDER TABLE
     // ============================================================
 
-      function buildStatusDropdown(rows) {
-        const set = new Set(rows.map(r => String(r.status || "").trim()).filter(Boolean));
-        const list = Array.from(set).sort((a,b)=>a.localeCompare(b));
-        $("statusFilter").innerHTML =
-          '<option value="ALL">Semua Status</option>' +
-          list.map(s => `<option value="${s.replaceAll('"','&quot;')}">${s}</option>`).join("");
+    function buildStatusDropdown(rows) {
+      statusValues = Array.from(
+        new Set((rows || []).map(r => String(r.status || "").trim()).filter(Boolean))
+      ).sort((a,b) => a.localeCompare(b));
+
+      // default: kalau belum ada pilihan, anggap semua dicentang
+      if (selectedStatuses.size === 0) {
+        statusValues.forEach(s => selectedStatuses.add(s));
       }
+
+      const opt = $("statusOptions");
+      if (!opt) return;
+
+      opt.innerHTML = statusValues.map(s => `
+        <label class="flex items-center gap-2 px-2 py-2 hover:bg-gray-50 rounded-xl cursor-pointer">
+          <input type="checkbox" class="statusCb h-4 w-4 accent-[#ffcc00]" value="${String(s).replaceAll('"','&quot;')}">
+          <span class="text-sm text-gray-700">${escapeHtml(s)}</span>
+        </label>
+      `).join("");
+
+      // set checked + listener
+      opt.querySelectorAll("input.statusCb").forEach(cb => {
+        cb.checked = selectedStatuses.has(cb.value);
+
+        cb.addEventListener("change", () => {
+          if (cb.checked) selectedStatuses.add(cb.value);
+          else selectedStatuses.delete(cb.value);
+
+          syncStatusAllUI();
+          syncStatusButtonText();
+
+          currentPage = 1;
+          applyFilters();
+        });
+      });
+
+      // hook checkbox "Semua Status"
+      $("statusAll").onchange = () => {
+        const on = $("statusAll").checked;
+        selectedStatuses.clear();
+        if (on) statusValues.forEach(s => selectedStatuses.add(s));
+
+        // update checkboxes
+        opt.querySelectorAll("input.statusCb").forEach(cb => cb.checked = on);
+
+        syncStatusAllUI();
+        syncStatusButtonText();
+
+        currentPage = 1;
+        applyFilters();
+      };
+
+      syncStatusAllUI();
+      syncStatusButtonText();
+    }
+
+    function syncStatusAllUI() {
+      const allEl = $("statusAll");
+      if (!allEl) return;
+
+      const allChecked = statusValues.length > 0 && statusValues.every(v => selectedStatuses.has(v));
+      allEl.checked = allChecked;
+
+      // mode "minus" (indeterminate) kalau sebagian doang yang dipilih
+      allEl.indeterminate = !allChecked && selectedStatuses.size > 0;
+    }
+
+    function syncStatusButtonText() {
+      const t = $("statusBtnText");
+      if (!t) return;
+
+      if (statusValues.length === 0) {
+        t.textContent = "Semua Status";
+        return;
+      }
+
+      if (selectedStatuses.size === 0) {
+        t.textContent = "Status: (kosong)";
+        return;
+      }
+
+      const allChecked = statusValues.every(v => selectedStatuses.has(v));
+      if (allChecked) t.textContent = "Semua Status";
+      else if (selectedStatuses.size === 1) t.textContent = `Status: ${Array.from(selectedStatuses)[0]}`;
+      else t.textContent = `Status: ${selectedStatuses.size} dipilih`;
+    }
 
         function buildPartDropdownPerPage(pageRows) {
       const sel = $("partFilter");
@@ -1506,56 +1624,72 @@ $("woListSearch")?.addEventListener("input", () => {
       return `<span>${escapeHtml(remarks)}</span>`;
     }
 
-      function applyFilters() {
-      const q = $("q").value.trim().toLowerCase();
-      const st = $("statusFilter").value;
-      const part = $("partFilter") ? $("partFilter").value : "ALL";
+    function applyFilters() {
+      const q = ($("q")?.value || "").trim().toLowerCase();
+      const part = $("partFilter")?.value || "ALL";
 
       let rows = allRows;
 
-      if (st !== "ALL") {
-        rows = rows.filter(r => String(r.status || "").trim() === st);
+      // ===== STATUS MULTI FILTER =====
+      if (statusValues.length > 0) {
+        if (selectedStatuses.size === 0) {
+          rows = []; // kalau uncheck semua -> kosong
+        } else if (selectedStatuses.size < statusValues.length) {
+          rows = rows.filter(r => selectedStatuses.has(String(r.status || "").trim()));
+        }
       }
 
-      if (q) rows = rows.filter(r => {
-        const hay = [r.work_order, r.part_number, r.model, r.customer, r.serial_number, r.part_description]
-          .map(x => String(x ?? "").toLowerCase()).join(" | ");
-        return hay.includes(q);
-      });
+      // ===== SEARCH =====
+      if (q) {
+        rows = rows.filter(r => {
+          const hay = [
+            r.work_order, r.part_number, r.model, r.customer,
+            r.serial_number, r.part_description
+          ].map(x => String(x ?? "").toLowerCase()).join(" | ");
+          return hay.includes(q);
+        });
+      }
 
-      if (part !== "ALL") rows = rows.filter(r => String(r.part_number || "").trim() === part);
+      // ===== PART FILTER =====
+      if (part !== "ALL") {
+        rows = rows.filter(r => String(r.part_number || "").trim() === part);
+      }
+
+      // ===== SORT =====
       rows = rows.slice().sort((a, b) => {
         const aComp = isCompletedStatus(a.status);
         const bComp = isCompletedStatus(b.status);
-        if (aComp !== bComp) return aComp ? 1 : -1; // non-completed di atas
+        if (aComp !== bComp) return aComp ? 1 : -1;
 
         const aA = (a.aging_days == null ? -1e15 : Number(a.aging_days));
         const bA = (b.aging_days == null ? -1e15 : Number(b.aging_days));
-        if (bA !== aA) return bA - aA; // aging desc
+        if (bA !== aA) return bA - aA;
 
-        // tie-breaker: order_date terbaru dulu (kalau ada)
         return String(b.order_date || "").localeCompare(String(a.order_date || ""));
       });
+
       const filtered = rows;
+
+      // ===== PAGINATION =====
       const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
       currentPage = Math.min(Math.max(1, currentPage), totalPages);
 
       const start = (currentPage - 1) * pageSize;
       const pageRows = filtered.slice(start, start + pageSize);
 
-      // info
-      if ($("filteredCount")) $("filteredCount").textContent = filtered.length;
-      if ($("shownCount")) $("shownCount").textContent = pageRows.length;
-      if ($("pageInfo")) $("pageInfo").textContent = `${currentPage}/${totalPages}`;
-      if ($("btnPrevPage")) $("btnPrevPage").disabled = currentPage <= 1;
-      if ($("btnNextPage")) $("btnNextPage").disabled = currentPage >= totalPages;
+      // ===== INFO UI =====
+      $("filteredCount") && ($("filteredCount").textContent = filtered.length);
+      $("shownCount") && ($("shownCount").textContent = pageRows.length);
+      $("pageInfo") && ($("pageInfo").textContent = `${currentPage}/${totalPages}`);
+      $("btnPrevPage") && ($("btnPrevPage").disabled = currentPage <= 1);
+      $("btnNextPage") && ($("btnNextPage").disabled = currentPage >= totalPages);
 
-      // dropdown sparepart dibuat per page
+      // dropdown sparepart per page
       buildPartDropdownPerPage(pageRows);
 
-      // render
+      // render table
       renderTable(pageRows);
-      $("rowCount").textContent = filtered.length; // kalau masih mau pakai total rows
+      $("rowCount") && ($("rowCount").textContent = filtered.length);
     }
 
     async function trySelect(fromName) {
@@ -1588,7 +1722,6 @@ $("woListSearch")?.addEventListener("input", () => {
     }
 
     $("q").addEventListener("input", applyFilters);
-    $("statusFilter").addEventListener("change", applyFilters);
     $("btnReload").addEventListener("click", () => { loadRows(); });
     $("btnNavData").addEventListener("click", () => { location.hash = "#data"; });
     $("btnNavDash").addEventListener("click", () => { location.hash = "#dashboard"; });
