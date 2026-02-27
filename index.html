@@ -1368,20 +1368,14 @@ __agingChart = new Chart(elAging, {
           return;
         }
 
-        // use retry wrapper to mitigate Navigator LockManager timeouts
-        const { data, error } = await signInWithRetry(email, password);
-        if (error) {
-          const msg = String(error.message || "").toLowerCase();
-
-          if (msg.includes("invalid login credentials")) {
-            setLoginMsg("error", "Email atau password salah.");
-            log("Email atau password salah.");
-            return;
-          }
-
-          // default error lainnya
-          setLoginMsg("error", "Login gagal: " + error.message);
-          log("Login gagal: " + error.message);
+        // use retry wrapper
+        let data;
+        try {
+          ({ data } = await signInWithRetry(email, password));
+        } catch (err) {
+          const friendly = authFriendlyMessage(err);
+          setLoginMsg("error", friendly);
+          log(friendly);
           return;
         }
         const badge = $("authBadge");
