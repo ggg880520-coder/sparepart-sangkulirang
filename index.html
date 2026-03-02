@@ -65,7 +65,7 @@
           <button id="btnReload"
             class="hidden px-4 py-2 rounded-full text-[10px] font-black uppercase border border-[#ffcc00] text-[#ffcc00]
                    hover:bg-[#ffcc00] hover:text-black transition-all" type="button">
-            Reload Data
+            Refresh Data
           </button>
 
           <button id="btnLogout"
@@ -126,6 +126,40 @@
           </button>
         </div>
       </div>
+
+          <!-- Signup card (HALAMAN BARU) -->
+<div id="signupCard" class="hidden bg-white border border-gray-200 rounded-3xl p-6 shadow-sm">
+  <div class="flex items-center justify-between mb-4">
+    <div class="text-xs font-black uppercase tracking-widest text-gray-600">Buat Akun Baru</div>
+
+    <button id="btnBackToLogin"
+      class="px-3 py-2 rounded-full text-[10px] font-black uppercase border border-gray-300 hover:bg-gray-50"
+      type="button">
+      Kembali
+    </button>
+  </div>
+
+  <div id="signupMsg" class="mt-2 text-[11px] font-bold"></div>
+
+  <div class="space-y-3 mt-3">
+    <input id="signup_email"
+      class="w-full px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]"
+      placeholder="email" />
+
+    <input id="signup_password" type="password"
+      class="w-full px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]"
+      placeholder="password" />
+
+    <button id="btnCreateAccount"
+      class="w-full px-4 py-2 rounded-full bg-[#1a1a1a] hover:bg-black text-white font-black text-[11px] uppercase shadow-sm transition-all"
+      type="button">
+      Buat Akun
+    </button>
+
+    <div class="text-[11px] text-gray-400">
+    Setelah akun dibuat, sistem akan mengarahkan ke Dashboard.
+  </div>
+</div>
     </div>
 
 <!-- ===== DATA SECTION (muncul setelah login) ===== -->
@@ -250,7 +284,7 @@
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
     <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
       <div class="text-xs font-black uppercase text-gray-500">Total WO</div>
-      <div id="woTotal" class="mt-2 text-3xl font-black text-[#005596]">0</div>
+      <div id="woTotal" class="mt-2 text-3xl font-black text-black">0</div>    
     </div>
 
     <div id="cardNotCompleted"
@@ -258,7 +292,7 @@
       <div class="flex items-start justify-between gap-3">
         <div>
           <div class="text-xs font-black uppercase text-gray-500">WO Not Completed</div>
-          <div id="woNotCompleted" class="mt-2 text-3xl font-black text-red-600">0</div>
+          <div id="woNotCompleted" class="mt-2 text-3xl font-black text-red-500">0</div>
           <div class="mt-1 text-[11px] text-gray-400">Klik untuk lihat daftar WO</div>
         </div>
         <div class="mt-1 inline-flex items-center gap-2">
@@ -275,7 +309,7 @@
       <div class="flex items-start justify-between gap-3">
         <div>
           <div class="text-xs font-black uppercase text-gray-500">WO Completed</div>
-          <div id="woCompleted" class="mt-2 text-3xl font-black text-green-600">0</div>
+          <div id="woCompleted" class="mt-2 text-3xl font-black text-green-500">0</div>          
           <div class="mt-1 text-[11px] text-gray-400">Klik untuk lihat daftar WO</div>
         </div>
         <div class="mt-1 inline-flex items-center gap-2">
@@ -321,6 +355,36 @@
   </div>
   <div class="mt-2 text-[11px] text-gray-400">
     Klik bar untuk buka WO tersebut.
+  </div>
+</div>
+
+<!-- ===== PT dengan WO Not Completed ===== -->
+<div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
+  <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
+    TOP Customer WO Not Completed 
+  </div>
+
+  <div class="w-full h-[380px]">
+    <canvas id="chartCustomerNotCompleted"></canvas>
+  </div>
+
+  <div class="mt-2 text-[11px] text-gray-400">
+    Klik bar atau klik row tabel untuk buka detail WO.
+  </div>
+
+  <div class="mt-4 overflow-x-auto">
+    <table class="min-w-[820px] w-full text-xs">
+      <thead class="bg-white border-b border-gray-200">
+        <tr class="text-gray-600 uppercase font-black">
+          <th class="p-3 text-left w-[60px]">Rank</th>
+          <th class="p-3 text-left">Customer</th>
+          <th class="p-3 text-right w-[140px]">WO Not Completed</th>
+          <th class="p-3 text-right w-[120px]">Aging Tertinggi</th>
+          <th class="p-3 text-right w-[90px]">Total (%)</th>
+        </tr>
+      </thead>
+      <tbody id="customerNotCompletedTbody" class="divide-y divide-gray-100"></tbody>
+    </table>
   </div>
 </div>
 
@@ -425,8 +489,15 @@
     // Supabase client
     // Note: if your environment blocks storage/session, you can consider persistSession:false as fallback.
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true, storageKey: "ut-sparepart-auth" }
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        storage: window.sessionStorage, // ✅ login hanya 1 sesi tab/browser
+        storageKey: "ut-sparepart-auth"
+      }
     });
+
+    localStorage.removeItem("ut-sparepart-auth");
 
     console.log("WEBAPP VERSION: 2026-02-24 A");
 
@@ -452,6 +523,7 @@
     let __pieChart = null;
     let __notCompletedChart = null;
     let __agingChart = null;
+    let __customerChart = null;
 
     let __woQuickSearch = "";
 
@@ -478,6 +550,23 @@ function setLoginMsg(type, text) {
     type === "ok"    ? "text-green-600" :
     "text-gray-600"
   );
+}
+
+function setSignupMsg(type, text) {
+  const el = $("signupMsg");
+  if (!el) return;
+
+  el.textContent = text || "";
+  el.className = "mt-2 text-[11px] font-bold " + (
+    type === "error" ? "text-red-600" :
+    type === "ok"    ? "text-green-600" :
+    "text-gray-600"
+  );
+}
+
+function clearSignupInputs() {
+  if ($("signup_email")) $("signup_email").value = "";
+  if ($("signup_password")) $("signup_password").value = "";
 }
 
 function authFriendlyMessage(err) {
@@ -772,6 +861,28 @@ function computeTopAgingNotCompleted(rows, topN = 10) {
   return out.slice(0, topN);
 }
 
+// ===== UT Chart Theme =====
+const UT_COLORS = {
+  yellow: "#ffcc00",
+  blue:   "#005596",
+  black:  "#1a1a1a",
+  text:   "#111827",
+  gray:   "#6b7280",
+  grid:   "rgba(0,0,0,0.06)"
+};
+
+// set default chart style (sekali aja)
+if (!window.__utChartThemeApplied) {
+  window.__utChartThemeApplied = true;
+
+  Chart.defaults.color = UT_COLORS.text;
+  Chart.defaults.font.family = "system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  Chart.defaults.plugins.legend.labels.boxWidth = 12;
+  Chart.defaults.plugins.legend.labels.usePointStyle = true;
+  Chart.defaults.plugins.tooltip.titleFont = { weight: "800" };
+  Chart.defaults.plugins.tooltip.bodyFont  = { weight: "700" };
+}
+
 function renderDashboard() {
   const stats = computeWOStats(allRows);
 
@@ -785,7 +896,16 @@ function renderDashboard() {
     type: "pie",
     data: {
       labels: ["Not Completed", "Completed"],
-      datasets: [{ data: [stats.notCompleted, stats.completed] }]
+    datasets: [{
+      data: [stats.notCompleted, stats.completed],
+      backgroundColor: [
+        "#ef4444", // merah - Not Completed
+        "#22c55e"  // hijau - Completed
+      ],
+      borderColor: "#111827", // border putih biar slice kepisah tegas
+      borderWidth: 2,
+      hoverOffset: 6
+    }]
     },
     options: {
       responsive: true,
@@ -806,9 +926,18 @@ function renderDashboard() {
     __notCompletedChart = new Chart(elDonut, {
       type: "doughnut",
       data: {
-        labels: ["Progress (ada supply/complete)", "No Progress (belum ada supply)"],
-        datasets: [{ data: [br.progress, br.noProgress] }]
-      },
+        labels: ["Progress", "No Progress"],
+datasets: [{
+  data: [br.progress, br.noProgress],
+  backgroundColor: [
+    "#22c55e", // Progress
+    "#ef4444"  // No Progress 
+  ],
+    borderColor: "#111827", // border putih biar slice kepisah tegas
+    borderWidth: 2,
+    hoverOffset: 6
+}]     
+    },
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -845,7 +974,10 @@ __agingChart = new Chart(elAging, {
       data: values,
       borderRadius: 10,
       barThickness: 18,
-      maxBarThickness: 20
+      maxBarThickness: 20,
+      backgroundColor: UT_COLORS.yellow,
+      borderColor: UT_COLORS.black,
+      borderWidth: 1
     }]
   },
   options: {
@@ -877,7 +1009,7 @@ __agingChart = new Chart(elAging, {
           text: "Aging",
           font: { weight: "800" }
         },
-        grid: { color: "rgba(0,0,0,0.06)" }
+        grid: { color: UT_COLORS.grid }
       },
       y: {
         ticks: { autoSkip: false, font: { weight: "800" } },
@@ -902,7 +1034,6 @@ __agingChart = new Chart(elAging, {
     }
   },
 
-  // ✅ INI YANG BIKIN ANGKA MUNCUL TANPA HOVER
   plugins: [{
     id: "barValueLabels",
     afterDatasetsDraw(chart) {
@@ -942,6 +1073,115 @@ __agingChart = new Chart(elAging, {
     }
   }]
 });
+
+// ===== Customer: WO Not Completed (Top 10) + Table
+const elCust = $("chartCustomerNotCompleted");
+if (elCust) {
+  const c = computeCustomerNotCompleted(allRows);
+  const top = c.list.slice(0, 10);
+
+  const custLabels = top.map(x => x.customer);
+  const custValues = top.map(x => x.count);
+
+  if (__customerChart) __customerChart.destroy();
+
+  __customerChart = new Chart(elCust, {
+    type: "bar",
+    data: {
+      labels: custLabels,
+      datasets: [{
+        label: "WO Not Completed",
+        data: custValues,
+        borderRadius: 10,
+        barThickness: 18,
+        maxBarThickness: 20,
+        backgroundColor: UT_COLORS.yellow,
+        borderColor: UT_COLORS.black,
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: "y",
+      layout: { padding: { left: 6, right: 40, top: 6, bottom: 0 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => `Customer: ${items[0].label}`,
+            label: (ctx) => `WO Not Completed: ${ctx.parsed.x}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+
+          // ✅ kasih ruang kanan biar bar gak mentok
+          suggestedMax: Math.max(...custValues) + 1,
+
+          ticks: { precision: 0 },
+          grid: { color: "rgba(0,0,0,0.06)" },
+          title: { display: true, text: "Jumlah WO Not Completed", font: { weight: "800" } }
+        },
+        y: {
+          ticks: { autoSkip: false, font: { weight: "800" } },
+          grid: { display: false }
+        }
+      },
+layout: { padding: { left: 6, right: 40, top: 6, bottom: 0 } },
+      onHover: (evt, elements) => {
+        evt.native.target.style.cursor = elements?.length ? "pointer" : "default";
+      },
+      onClick: (evt, elements) => {
+        if (!elements || !elements.length) return;
+        const idx = elements[0].index;
+        const customer = custLabels[idx];
+        __woQuickSearch = customer;
+        location.hash = "#wo-not-completed";
+      }
+    },
+    plugins: [{
+      id: "barValueLabelsCustomer",
+      afterDatasetsDraw(chart) {
+        const { ctx, chartArea } = chart;
+        const meta = chart.getDatasetMeta(0);
+        const data = chart.data.datasets[0]?.data || [];
+
+        ctx.save();
+        ctx.font = "700 12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+        ctx.textBaseline = "middle";
+
+        meta.data.forEach((bar, i) => {
+          const v = Number(data[i] ?? 0);
+          if (!Number.isFinite(v)) return;
+
+          const props = bar.getProps(["x", "y"], true);
+          let x = props.x + 10;
+          const y = props.y;
+
+          const text = `${v}`;
+          const w = ctx.measureText(text).width;
+
+          if (x + w > chartArea.right - 4) {
+            x = props.x - 10;
+            ctx.textAlign = "right";
+          } else {
+            ctx.textAlign = "left";
+          }
+
+          ctx.fillStyle = "#111827";
+          ctx.fillText(text, x, y);
+        });
+
+        ctx.restore();
+      }
+    }]
+  });
+
+  renderCustomerNotCompletedTable(c.list, c.totalNot);
+}
   }
 }
 
@@ -1129,6 +1369,79 @@ __agingChart = new Chart(elAging, {
       setLoadStatus("ok", `Load berhasil ✅ (${allRows.length} rows) [SOURCE: SHEET]`);
     }
 
+    function computeCustomerNotCompleted(rows) {
+      // hasil: list customer dengan jumlah WO NOT completed (unik per WO)
+      const woMap = new Map(); // wo -> items
+      for (const r of rows || []) {
+        const wo = String(r.work_order ?? "").trim();
+        if (!wo) continue;
+        if (!woMap.has(wo)) woMap.set(wo, []);
+        woMap.get(wo).push(r);
+      }
+
+      const custMap = new Map(); // customer -> { count, maxAging }
+      let totalNot = 0;
+
+      for (const items of woMap.values()) {
+        const isWOCompleted = items.length > 0 && items.every(x => isCompletedStatus(x.status));
+        if (isWOCompleted) continue;
+
+        const customer = String(items.find(x => String(x.customer ?? "").trim())?.customer ?? "UNKNOWN").trim();
+        totalNot++;
+
+        const woMaxAging = Math.max(
+          ...items.map(x => Number(x.aging_days ?? -1)).filter(n => Number.isFinite(n))
+        );
+
+        const cur = custMap.get(customer) || { count: 0, maxAging: -1 };
+        cur.count += 1;
+        if (Number.isFinite(woMaxAging)) cur.maxAging = Math.max(cur.maxAging, woMaxAging);
+        custMap.set(customer, cur);
+      }
+
+      const list = Array.from(custMap.entries()).map(([customer, v]) => ({
+        customer,
+        count: v.count,
+        maxAging: v.maxAging
+      }));
+
+      list.sort((a, b) => (b.count - a.count) || (b.maxAging - a.maxAging) || a.customer.localeCompare(b.customer));
+
+      return { totalNot, list };
+    }
+
+    function renderCustomerNotCompletedTable(list, totalNot) {
+      const tb = $("customerNotCompletedTbody");
+      if (!tb) return;
+
+      const shown = (list || []).slice(0, 25);
+
+      tb.innerHTML = shown.map((x, i) => {
+        const pct = totalNot ? ((x.count / totalNot) * 100) : 0;
+        return `
+          <tr class="hover:bg-[#fff9e6] cursor-pointer" data-customer="${encodeURIComponent(x.customer)}">
+            <td class="p-3 font-black text-gray-600">${i + 1}</td>
+            <td class="p-3 font-black text-[#005596]">${escapeHtml(x.customer)}</td>
+            <td class="p-3 text-right font-black">${escapeHtml(x.count)}</td>
+            <td class="p-3 text-right">${x.maxAging >= 0 ? escapeHtml(x.maxAging) + " hari" : ""}</td>
+            <td class="p-3 text-right">${pct.toFixed(1)}%</td>
+          </tr>
+        `;
+      }).join("");
+
+      // bind click sekali aja (event delegation)
+      if (!window.__custTblBound) {
+        window.__custTblBound = true;
+        tb.addEventListener("click", (e) => {
+          const tr = e.target.closest("tr[data-customer]");
+          if (!tr) return;
+          const customer = decodeURIComponent(tr.dataset.customer || "");
+          __woQuickSearch = customer;
+          location.hash = "#wo-not-completed";
+        });
+      }
+    }
+
     // --- ADD: access logging (sekali per session) ---
     let __loggedThisSession = false;
 
@@ -1209,7 +1522,7 @@ __agingChart = new Chart(elAging, {
       // tampilkan login hanya saat logged out
       show("loginCard", loggedOut);
 
-      // tampilkan data section setelah login
+        if (!loggedOut) show("signupCard", false);
 
       // tombol nav
       show("btnLogout", !loggedOut);
@@ -1224,6 +1537,8 @@ __agingChart = new Chart(elAging, {
       if (loggedOut) {
         clearDataUI();
         clearLoginInputs();
+        clearSignupInputs();
+        routeFromHash(); // biar #signup kebaca saat logged out
       }
           if (!loggedOut) {
       routeFromHash(); // tampilkan sesuai #hash
@@ -1411,23 +1726,78 @@ __agingChart = new Chart(elAging, {
       });
     });
 
-    $("btnSignup").addEventListener("click", async () => {
-      clearLog();
-      const email = $("email").value.trim(); const password = $("password").value;
-      if (!email || !password) return log("Isi email & password dulu.");
-      log("Membuat akun (sign up)...");
-      const { data, error } = await sb.auth.signUp({ email, password });
-      if (error) return log("Daftar gagal: " + error.message);
-      if (data?.session) log("Daftar sukses dan langsung login ✅"); else log("Daftar sukses ✅. Silakan cek email untuk konfirmasi.");
-      await refreshAuthUI();
+    $("btnSignup").addEventListener("click", (e) => {
+      e?.preventDefault?.();
+      location.hash = "#signup";   // pindah ke halaman signup
+    });
+
+    // back ke login
+    $("btnBackToLogin")?.addEventListener("click", () => {
+      location.hash = "#login";
+    });
+
+    // submit signup
+    $("btnCreateAccount")?.addEventListener("click", async (e) => {
+      e?.preventDefault?.();
+      setSignupMsg("info", "");
+
+      const email = ($("signup_email")?.value || "").trim();
+      const password = $("signup_password")?.value || "";
+
+      if (!email || !password) {
+        setSignupMsg("error", "Isi email & password dulu.");
+        return;
+      }
+
+      const btn = $("btnCreateAccount");
+      const old = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "LOADING...";
+
+      try {
+        // 1) signUp
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) {
+          setSignupMsg("error", "Daftar gagal: " + error.message);
+          return;
+        }
+
+        // 2) coba auto-login kalau session belum ada
+        let hasSession = !!data?.session;
+        if (!hasSession) {
+          try {
+            const res = await signInWithRetry(email, password, 1);
+            hasSession = !!res?.data?.session;
+          } catch (err) {
+            // biasanya kalau email confirmation ON → "Email not confirmed"
+          }
+        }
+
+        if (hasSession) {
+          setSignupMsg("ok", "Akun dibuat ✅ Mengarahkan ke dashboard...");
+          clearSignupInputs();
+
+          // arahkan ke dashboard setelah login
+          location.hash = "#dashboard";
+          await routeAfterLogin(); // ini akan load data & tampil dashboard sesuai hash
+        } else {
+          // kalau Supabase minta konfirmasi email
+          setSignupMsg("ok", "Akun dibuat ✅ Cek email untuk konfirmasi, lalu login.");
+          clearSignupInputs();
+          location.hash = "#login";
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = old;
+      }
     });
 
     $("btnWoPrev")?.addEventListener("click", () => {
-  if (woListPage > 1) {
-    woListPage--;
-    renderWOList(woListMode);
-  }
-});
+      if (woListPage > 1) {
+        woListPage--;
+        renderWOList(woListMode);
+      }
+    });
 
 $("btnWoNext")?.addEventListener("click", () => {
   woListPage++;
@@ -1760,12 +2130,25 @@ document.addEventListener("keydown", (e) => {
 
 function routeFromHash() {
   const h = (location.hash || "#data").toLowerCase();
-
   const isLoggedIn = !$("btnLogout").classList.contains("hidden");
+
+  // kalau sudah login, pastikan auth cards tidak tampil
+  if (isLoggedIn) {
+    show("loginCard", false);
+    show("signupCard", false);
+  }
+
+  // ===== LOGGED OUT ROUTE =====
   if (!isLoggedIn) {
     show("dataSection", false);
     show("dashboardSection", false);
     show("woListSection", false);
+
+    // kalau hash #signup → tampil signupCard
+    const wantSignup = (h === "#signup");
+    show("loginCard", !wantSignup);
+    show("signupCard", wantSignup);
+
     return;
   }
 
