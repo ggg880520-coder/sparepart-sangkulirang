@@ -190,7 +190,7 @@
 
         <input id="q"
           class="w-full md:w-68 px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]"
-          placeholder="Cari WO / Part Number / Model / Customer / SN" />
+          placeholder="Cari WO / Part Number / Model / Customer / SN / KODE UNIT" />
 
         <!-- STATUS FILTER (checkbox dropdown) -->
         <div id="statusFilterWrap" class="relative w-full md:w-60">
@@ -272,6 +272,7 @@
           <th class="p-3 text-left w-[140px]">Customer</th>
           <th class="p-3 text-left w-[120px]">Model</th>
           <th class="p-3 text-left w-[110px]">SN</th>
+          <th class="p-3 text-left w-[110px]">KODE UNIT</th>
           <th class="p-3 text-left w-[140px]">Part Number</th>
           <th class="p-3 text-left min-w-[240px]">Description</th>
           <th class="p-3 text-right w-[70px] whitespace-nowrap">Order</th>
@@ -435,7 +436,7 @@
     <!-- search -->
     <input id="woListSearch"
       class="mt-3 w-full md:w-[420px] px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]"
-      placeholder="Cari Work Order / Customer / Model / SN / Part Number" />
+      placeholder="Cari Work Order / Customer / Model / SN / Part Number / KODE UNIT" />
 
     <!-- table -->
     <div class="mt-3 border border-gray-200 rounded-3xl overflow-hidden">
@@ -450,6 +451,7 @@
                 <th class="p-3 text-left">Customer</th>
                 <th class="p-3 text-left">Model</th>
                 <th class="p-3 text-left">SN</th>
+                <th class="p-3 text-left">KODE UNIT</th>
                 <th class="p-3 text-left">Part Number</th>
                 <th class="p-3 text-left">Description</th>
                 <th class="p-3 text-left">Status</th>
@@ -730,10 +732,10 @@ for (const [wo, items] of map.entries()) {
   // search
   if (q) {
     flat = flat.filter(r => {
-      const hay = [
-        r.work_order, r.customer, r.model, r.serial_number,
-        r.part_number, r.part_description, r.pic, r.remarks
-      ].map(x => String(x ?? "").toLowerCase()).join(" | ");
+    const hay = [
+      r.work_order, r.customer, r.model, r.serial_number,
+      r.unit_code, r.part_number, r.part_description, r.pic, r.remarks
+    ].map(x => String(x ?? "").toLowerCase()).join(" | ");
       return hay.includes(q);
     });
   }
@@ -766,6 +768,7 @@ for (const [wo, items] of map.entries()) {
       <td class="p-3">${escapeHtml(r.customer)}</td>
       <td class="p-3">${escapeHtml(r.model)}</td>
       <td class="p-3 font-mono">${escapeHtml(r.serial_number)}</td>
+      <td class="p-3 font-mono">${escapeHtml(r.unit_code)}</td>
       <td class="p-3 font-mono font-bold">${escapeHtml(r.part_number)}</td>
       <td class="p-3">${escapeHtml(r.part_description)}</td>
       <td class="p-3">${escapeHtml(r.status)}</td>
@@ -1354,6 +1357,7 @@ layout: { padding: { left: 6, right: 40, top: 6, bottom: 0 } },
           customer: String(get(row, "CUSTOMER")).trim() || null,
           model: String(get(row, "MODEL")).trim() || null,
           serial_number: String(get(row, "SN")).trim() || null,
+          unit_code: String(get(row, "KODE UNIT")).trim() || null,
           part_number: String(get(row, "PART NUMBER")).trim() || null,
           part_description: String(get(row, "PART DESCRIPTION")).trim() || null,
           qty_order: toNumberSafe(get(row, "ORDER")),
@@ -1524,7 +1528,7 @@ layout: { padding: { left: 6, right: 40, top: 6, bottom: 0 } },
       }
       $("tbody").innerHTML = `
         <tr>
-          <td colspan="14" class="p-6 text-center text-gray-400">
+          <td colspan="15" class="p-6 text-center text-gray-400">
             Silakan login untuk melihat data.
           </td>
         </tr>
@@ -1973,6 +1977,7 @@ $("woListSearch")?.addEventListener("input", () => {
           <td class="p-3">${escapeHtml(r.customer ?? "")}</td>
           <td class="p-3">${escapeHtml(r.model ?? "")}</td>
           <td class="p-3 font-mono text-sky-700 font-bold">${escapeHtml(r.serial_number ?? "")}</td>
+          <td class="p-3 font-mono">${escapeHtml(r.unit_code ?? "")}</td>
           <td class="p-3 whitespace-nowrap font-bold">${escapeHtml(r.part_number ?? "")}</td>
           <td class="p-3 text-gray-700">${escapeHtml(r.part_description ?? "")}</td>
           <td class="p-3 text-right">${escapeHtml(r.qty_order ?? "")}</td>
@@ -2023,10 +2028,10 @@ $("woListSearch")?.addEventListener("input", () => {
       // ===== SEARCH =====
       if (q) {
         rows = rows.filter(r => {
-          const hay = [
-            r.work_order, r.part_number, r.model, r.customer,
-            r.serial_number, r.part_description
-          ].map(x => String(x ?? "").toLowerCase()).join(" | ");
+        const hay = [
+          r.work_order, r.part_number, r.model, r.customer,
+          r.serial_number, r.unit_code, r.part_description
+        ].map(x => String(x ?? "").toLowerCase()).join(" | ");
           return hay.includes(q);
         });
       }
@@ -2077,7 +2082,7 @@ $("woListSearch")?.addEventListener("input", () => {
       // 1) coba versi lengkap (ada remarks + aging_error)
       let res = await sb
         .from(fromName)
-        .select("work_order,order_date,customer,model,serial_number,part_number,part_description,qty_order,qty_supply,qty_remaining,status,eta,remarks,aging_days,aging_error")
+        .select("work_order,order_date,customer,model,serial_number,unit_code,part_number,part_description,qty_order,qty_supply,qty_remaining,status,eta,remarks,aging_days,aging_error")
         .order("order_date", { ascending: false })
         .limit(500);
 
@@ -2085,7 +2090,7 @@ $("woListSearch")?.addEventListener("input", () => {
       if (res.error && String(res.error.message || "").toLowerCase().includes("column")) {
         res = await sb
           .from(fromName)
-          .select("work_order,order_date,customer,model,serial_number,part_number,part_description,qty_order,qty_supply,qty_remaining,status,eta,aging_days")
+          .select("work_order,order_date,customer,model,serial_number,unit_code,part_number,part_description,qty_order,qty_supply,qty_remaining,status,eta,aging_days")
           .order("order_date", { ascending: false })
           .limit(500);
       }
