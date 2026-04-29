@@ -26,59 +26,55 @@
       background-clip: content-box;
     }
   </style>
-
 </head>
 
-<body class="bg-[#f8f9fa] text-slate-800 font-sans">
+<body class="text-slate-800 font-sans bg-fixed bg-cover bg-center bg-no-repeat" style="background-image: url('Background.png');">
 
   <!-- ===== UT HEADER (white) ===== -->
   <header class="bg-white w-full shadow-md sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-      <div class="flex items-center gap-4">
-        <div class="flex flex-col border-r-2 border-gray-100 pr-4">
-          <!-- GANTI file logo sesuai milikmu -->
-          <img src="logo ut.png" alt="United Tractors" class="h-8 md:h-10 object-contain">
-          <span class="text-[8px] md:text-[9px] font-bold text-[#005596] mt-0.5 tracking-widest uppercase">
-            member of <span class="font-black">ASTRA</span>
-          </span>
-        </div>
+    <div class="w-full px-6 md:px-12 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div class="flex flex-col items-start">
+  <img src="Logo.png" alt="United Tractors" class="h-12 md:h-16 object-contain">
 
-        <div class="flex flex-col justify-center">
-          <h1 class="text-lg md:text-2xl text-black font-black italic uppercase tracking-tighter leading-none">
-          United Tractors
-          </h1>
-          <p class="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-[0.18em] mt-1">
-            Sparepart Monitoring System
-          </p>
-        </div>
-      </div>
+  <span class="mt-2 text-[10px] md:text-sm font-black uppercase tracking-[0.22em] text-[#1f2937]">
+    Fuzzy Ordering Monitoring System
+  </span>
+</div>
 
-      <div class="hidden md:flex items-center">
-        <span class="text-black italic font-black text-lg md:text-2xl mr-2 tracking-tighter uppercase">Moving as</span>
-        <div class="bg-[#ffcc00] rounded-full w-9 h-9 md:w-11 md:h-11 flex items-center justify-center shadow-sm">
-          <span class="text-black font-black text-[10px] md:text-xs uppercase">one</span>
-        </div>
-      </div>
+      <div class="hidden md:flex items-center gap-8">
+  <img src="Sangkulirang-Stronger.jpeg" alt="Sangkulirang Stronger" class="h-12 md:h-16 object-contain">
+  <img src="Moving As One.png" alt="Moving As One" class="h-10 md:h-14 object-contain">
+</div>
     </div>
 
     <!-- ===== UT NAV (black) ===== -->
     <nav class="bg-[#1a1a1a] w-full border-t border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 py-2 flex flex-col md:flex-row items-center justify-between gap-3">
+      <div class="w-full px-6 md:px-12 py-2 flex flex-col md:flex-row items-center justify-start gap-3">
         <div class="flex items-center gap-3">
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="w-full flex items-center justify-between gap-2">
+  <div class="flex items-center gap-2">
           <button id="btnNavData"
             class="hidden px-4 py-2 rounded-full text-[10px] font-black uppercase border border-gray-600 text-gray-200
                   hover:bg-gray-700 transition-all" type="button">
             Data
           </button>
 
+          <button id="btnNavPlanning"
+  class="hidden px-4 py-2 rounded-full text-[10px] font-black uppercase border border-gray-600 text-gray-200
+        hover:bg-gray-700 transition-all" type="button">
+  Planning
+</button>
+
           <button id="btnNavDash"
             class="hidden px-4 py-2 rounded-full text-[10px] font-black uppercase border border-gray-600 text-gray-200
                   hover:bg-gray-700 transition-all" type="button">
             Dashboard
           </button>
+          </div>
+
+<div class="flex items-center gap-2">
           <button id="btnReload"
             class="hidden px-4 py-2 rounded-full text-[10px] font-black uppercase border border-[#ffcc00] text-[#ffcc00]
                    hover:bg-[#ffcc00] hover:text-black transition-all" type="button">
@@ -89,7 +85,7 @@
             class="hidden px-4 py-2 rounded-full text-[10px] font-black uppercase bg-red-600 text-white hover:bg-red-500 transition-all"
             type="button">
             Logout
-          </button>
+            </button>
         </div>
       </div>
     </nav>
@@ -98,7 +94,7 @@
     <div class="w-full h-[3px] bg-[#ffcc00]"></div>
   </header>
 
-  <main class="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+  <main class="w-full p-4 md:p-8 space-y-6 min-h-screen">
 
     <!-- Status & Log (selalu kelihatan) -->
     <div class="hidden bg-white border border-gray-200 rounded-2xl p-4">
@@ -183,7 +179,7 @@
 <div id="dataSection" class="hidden space-y-6">
 
   <!-- ===== Filters ===== -->
-  <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm space-y-3">
+  <div class="bg-white/55 border border-white/40 rounded-3xl p-5 shadow-sm space-y-3">
 
     <div class="flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
       <div class="flex flex-col md:flex-row items-start md:items-center gap-3 w-full">
@@ -295,18 +291,97 @@
 
 </div>
 
+<!-- ===== PLANNING SECTION (muncul setelah login) ===== -->
+<div id="planningSection" class="hidden space-y-6">
+
+  <!-- ===== OIL SUMMARY ===== -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div class="bg-white/55 border border-white/40 rounded-3xl p-5 shadow-sm">
+    <div class="text-xs font-black uppercase text-gray-500">Total 15W40</div>
+    <div id="sumOil15W40" class="mt-2 text-3xl font-black text-[#005596]">0</div>
+    <div class="text-[11px] text-gray-400">Liter</div>
+  </div>
+
+  <div class="bg-white/55 border border-white/40 rounded-3xl p-5 shadow-sm">
+    <div class="text-xs font-black uppercase text-gray-500">Total TO50</div>
+    <div id="sumOilTO50" class="mt-2 text-3xl font-black text-[#005596]">0</div>
+    <div class="text-[11px] text-gray-400">Liter</div>
+  </div>
+
+  <div class="bg-white/55 border border-white/40 rounded-3xl p-5 shadow-sm">
+    <div class="text-xs font-black uppercase text-gray-500">Total TO30</div>
+    <div id="sumOilTO30" class="mt-2 text-3xl font-black text-[#005596]">0</div>
+    <div class="text-[11px] text-gray-400">Liter</div>
+  </div>
+</div>
+
+<!-- ===== PLANNING FILTER ===== -->
+<div class="bg-white/55 border border-white/40 rounded-3xl p-5 shadow-sm">
+  <div class="flex flex-col md:flex-row md:items-center gap-3">
+    <select id="planningCustomerFilter"
+      class="w-full md:w-72 px-3 py-2 rounded-xl bg-white border border-gray-200 text-sm outline-none focus:border-[#ffcc00]">
+      <option value="ALL">Semua Customer</option>
+    </select>
+
+    <div class="text-sm text-gray-700">
+      Total Oil Rows:
+      <span id="planningOilRowCount" class="font-black text-[#005596]">0</span>
+    </div>
+  </div>
+</div>
+
+  <!-- ===== OIL REQUIREMENT PLAN ===== -->
+  <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <div class="text-xs font-black uppercase tracking-widest text-gray-600">
+          Oil Requirement Plan
+        </div>
+        <div class="text-[11px] text-gray-400">
+          Simulasi kebutuhan oil berdasarkan plan service dan template PS.
+        </div>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-[900px] w-full text-xs">
+        <thead class="bg-white border-b border-gray-200">
+          <tr class="text-gray-600 uppercase font-black">
+            <th class="p-3 text-left">Plan Date</th>
+            <th class="p-3 text-left">Customer</th>
+            <th class="p-3 text-left">KODE UNIT</th>
+            <th class="p-3 text-left">Model</th>
+            <th class="p-3 text-left">PS</th>
+            <th class="p-3 text-right">Days</th>
+            <th class="p-3 text-left">Oil Type</th>
+            <th class="p-3 text-left">Part Number</th>
+            <th class="p-3 text-right">Qty</th>
+            <th class="p-3 text-left">Unit</th>
+            <th class="p-3 text-right">Priority Score</th>
+            <th class="p-3 text-left">Priority</th>
+            <th class="p-3 text-left">Lead Time Status</th>
+            <th class="p-3 text-left">Recommendation</th>
+          </tr>
+        </thead>
+        <tbody id="oilPlanTbody" class="divide-y divide-gray-100"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
 <!-- ===== DASHBOARD SECTION (muncul setelah login) ===== -->
 <div id="dashboardSection" class="hidden space-y-6">
 
   <!-- cards -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
+    <div class="bg-white/55 border border-white/40 rounded-3xl p-5 shadow-sm">
       <div class="text-xs font-black uppercase text-gray-500">Total WO</div>
       <div id="woTotal" class="mt-2 text-3xl font-black text-black">0</div>    
     </div>
 
     <div id="cardNotCompleted"
-      class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm cursor-pointer hover:bg-gray-50 group">
+      class="bg-white/55 border border-white/40 rounded-3xl p-5 shadow-sm cursor-pointer hover:bg-gray-50 group">
       <div class="flex items-start justify-between gap-3">
         <div>
           <div class="text-xs font-black uppercase text-gray-500">WO Not Completed</div>
@@ -323,7 +398,7 @@
     </div>
 
     <div id="cardCompleted"
-      class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm cursor-pointer hover:bg-gray-50 group">
+      class="bg-white/55 border border-white/40 rounded-3xl p-5 shadow-sm cursor-pointer hover:bg-gray-50 group">
       <div class="flex items-start justify-between gap-3">
         <div>
           <div class="text-xs font-black uppercase text-gray-500">WO Completed</div>
@@ -342,7 +417,7 @@
 
   <!-- charts: KIRI KANAN -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
+    <div class="bg-white/55 border border-white/40 rounded-3xl p-5 shadow-sm">
       <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
         STATUS WO (%)
       </div>
@@ -351,7 +426,7 @@
       </div>
     </div>
 
-    <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm cursor-pointer hover:bg-gray-50">
+    <div class="bg-white/55 border border-white/40 rounded-3xl p-5 shadow-sm cursor-pointer hover:bg-gray-50">
       <div class="text-xs font-black tracking-widest text-gray-600 mb-3">
         Progress WO Not Completed (%)
       </div>
@@ -364,7 +439,7 @@
     </div>
   </div>
 
-  <div class="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
+  <div class="bg-white/55 border border-white/40 rounded-3xl p-5 shadow-sm">
   <div class="text-xs font-black uppercase tracking-widest text-gray-600 mb-3">
     Top Aging WO
   </div>
@@ -545,6 +620,338 @@
     let __customerChart = null;
 
     let __woQuickSearch = "";
+
+const oilServicePlans = [
+  {
+    plan_date: "2026-04-13",
+    customer: "TRIDEA SENADA",
+    unit_code: "MO 530",
+    model: "PC135F-10MO/P2",
+    ps_interval: 500
+  },
+  {
+    plan_date: "2026-04-18",
+    customer: "INDO PRIMA LESTARIJAYA",
+    unit_code: "E 520",
+    model: "PC200-10MO",
+    ps_interval: 500
+  }
+];
+
+const oilPartTemplates = [
+  {
+    model_key: "PC135",
+    ps_interval: 500,
+    oil_type: "15W40",
+    part_number: "15W40-DH1/P20",
+    qty: 12.5,
+    unit: "Liter"
+  },
+  {
+    model_key: "PC135",
+    ps_interval: 500,
+    oil_type: "TO50",
+    part_number: "TO-50-DM/P20",
+    qty: 8,
+    unit: "Liter"
+  },
+  {
+    model_key: "PC200",
+    ps_interval: 500,
+    oil_type: "15W40",
+    part_number: "15W40-DH1/P20",
+    qty: 18,
+    unit: "Liter"
+  },
+  {
+    model_key: "PC200",
+    ps_interval: 1000,
+    oil_type: "TO30",
+    part_number: "TO-30-DM/P20",
+    qty: 1.3,
+    unit: "Liter"
+  }
+];
+
+function getModelKey(model) {
+  const s = String(model || "").toUpperCase();
+  if (s.includes("PC135")) return "PC135";
+  if (s.includes("PC200")) return "PC200";
+  return "";
+}
+
+function buildPlanningCustomerFilter(rows) {
+  const sel = $("planningCustomerFilter");
+  if (!sel) return;
+
+  const prev = sel.value || "ALL";
+
+  const customers = Array.from(
+    new Set((rows || []).map(r => String(r.customer || "").trim()).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
+
+  sel.innerHTML =
+    '<option value="ALL">Semua Customer</option>' +
+    customers.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+
+  sel.value = customers.includes(prev) ? prev : "ALL";
+}
+
+function daysUntilPlan(planDate) {
+  const d = new Date(String(planDate || "") + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+}
+
+function oilCriticalityScore(oilType) {
+  const s = String(oilType || "").toUpperCase();
+
+  if (s === "15W40") return 90;
+  if (s === "TO50") return 80;
+  if (s === "TO30") return 70;
+
+  return 50;
+}
+
+function urgencyScoreFromDays(days) {
+  if (days == null) return 50;
+
+  if (days <= 7) return 100;
+  if (days <= 14) return 85;
+  if (days <= 30) return 70;
+  if (days <= 60) return 45;
+
+  return 25;
+}
+
+function qtyPressureScore(qty) {
+  const n = Number(qty || 0);
+
+  if (n >= 20) return 90;
+  if (n >= 10) return 75;
+  if (n >= 5) return 60;
+  if (n > 0) return 40;
+
+  return 20;
+}
+
+function computeFuzzyPriority(row) {
+  const days = daysUntilPlan(row.plan_date);
+
+  let score = 0;
+  let label = "LOW";
+  let recommendation = "Monitoring";
+
+  if (days == null) {
+    score = 50;
+    label = "UNKNOWN";
+    recommendation = "Cek tanggal plan";
+  } 
+  else if (days <= 7) {
+    score = 90;
+    label = "HIGH";
+    recommendation = "Segera cek stock / lakukan order";
+  } 
+  else if (days <= 21) {
+    score = 70;
+    label = "MEDIUM";
+    recommendation = "Pastikan ketersediaan sparepart";
+  } 
+  else {
+    score = 40;
+    label = "LOW";
+    recommendation = "Masih aman, monitor";
+  }
+
+  return {
+    days_to_plan: days,
+    priority_score: score,
+    priority_label: label,
+    recommendation
+  };
+}
+
+function generateOilRequirementPlan() {
+  const out = [];
+
+  for (const plan of oilServicePlans) {
+    const modelKey = getModelKey(plan.model);
+
+    const templates = oilPartTemplates.filter(t =>
+      t.model_key === modelKey &&
+      Number(t.ps_interval) === Number(plan.ps_interval)
+    );
+
+    for (const t of templates) {
+      const baseRow = {
+  plan_date: plan.plan_date,
+  customer: plan.customer,
+  unit_code: plan.unit_code,
+  model: plan.model,
+  ps_interval: plan.ps_interval,
+  oil_type: t.oil_type,
+  part_number: t.part_number,
+  qty: t.qty,
+  unit: t.unit
+};
+
+const fuzzy = computeFuzzyPriority(baseRow);
+
+// 🔥 tambahkan ini
+const leadTime = computeLeadTimeStatus(fuzzy.days_to_plan);
+
+out.push({
+  ...baseRow,
+  ...fuzzy,
+  ...leadTime
+});
+    }
+  }
+
+  return out;
+}
+
+function computeLeadTimeStatus(days) {
+  const LEAD_TIME = 28; // 3-4 minggu
+
+  if (days == null) {
+    return {
+      lead_time_status: "UNKNOWN",
+      lead_time_note: "-"
+    };
+  }
+
+  if (days < 0) {
+  return {
+    lead_time_status: "CRITICAL",
+    lead_time_note: "Tanggal plan sudah lewat"
+  };
+}
+
+  if (days < LEAD_TIME) {
+    return {
+      lead_time_status: "CRITICAL",
+      lead_time_note: "Di bawah lead time"
+    };
+  }
+
+  if (days <= LEAD_TIME + 7) {
+    return {
+      lead_time_status: "RISK",
+      lead_time_note: "Mendekati batas"
+    };
+  }
+
+  return {
+    lead_time_status: "SAFE",
+    lead_time_note: "Masih aman"
+  };
+}
+
+function priorityBadge(label) {
+  const v = String(label || "").toUpperCase();
+
+  if (v === "HIGH") {
+    return `<span class="inline-flex items-center px-3 py-1 rounded-full bg-red-600 text-white font-black text-[11px]">HIGH</span>`;
+  }
+
+  if (v === "MEDIUM") {
+    return `<span class="inline-flex items-center px-3 py-1 rounded-full bg-[#ffcc00] text-black font-black text-[11px]">MEDIUM</span>`;
+  }
+
+  if (v === "LOW") {
+    return `<span class="inline-flex items-center px-3 py-1 rounded-full bg-green-600 text-white font-black text-[11px]">LOW</span>`;
+  }
+
+  return `<span class="inline-flex items-center px-3 py-1 rounded-full bg-gray-400 text-white font-black text-[11px]">${escapeHtml(label)}</span>`;
+}
+
+function leadTimeBadge(status) {
+  const v = String(status || "").toUpperCase();
+
+  if (v === "CRITICAL" || v === "OVERDUE") {
+    return `<span class="inline-flex items-center px-3 py-1 rounded-full bg-red-600 text-white font-black text-[11px]">${escapeHtml(v)}</span>`;
+  }
+
+  if (v === "RISK") {
+    return `<span class="inline-flex items-center px-3 py-1 rounded-full bg-[#ffcc00] text-black font-black text-[11px]">${escapeHtml(v)}</span>`;
+  }
+
+  if (v === "SAFE") {
+    return `<span class="inline-flex items-center px-3 py-1 rounded-full bg-green-600 text-white font-black text-[11px]">${escapeHtml(v)}</span>`;
+  }
+
+  return `<span class="inline-flex items-center px-3 py-1 rounded-full bg-gray-400 text-white font-black text-[11px]">${escapeHtml(v)}</span>`;
+}
+
+function recommendationBadge(row) {
+  const priority = String(row.priority_label || "").toUpperCase();
+  const lead = String(row.lead_time_status || "").toUpperCase();
+
+  if (priority === "HIGH" || lead === "CRITICAL" || lead === "OVERDUE") {
+    return `<span class="inline-flex items-center px-4 py-2 rounded-xl bg-red-600 text-white font-black text-[11px]">ORDER / CEK NOW</span>`;
+  }
+
+  if (priority === "MEDIUM" || lead === "RISK") {
+    return `<span class="inline-flex items-center px-4 py-2 rounded-xl bg-[#ffcc00] text-black font-black text-[11px]">SEGERA CEK</span>`;
+  }
+
+  return `<span class="inline-flex items-center px-4 py-2 rounded-xl bg-green-600 text-white font-black text-[11px]">AMAN</span>`;
+}
+
+function renderOilRequirementPlan() {
+  const tb = $("oilPlanTbody");
+  if (!tb) return;
+
+  const allOilRows = generateOilRequirementPlan();
+  buildPlanningCustomerFilter(allOilRows);
+
+  const selectedCustomer = $("planningCustomerFilter")?.value || "ALL";
+
+  const rows = selectedCustomer === "ALL"
+    ? allOilRows
+    : allOilRows.filter(r => String(r.customer || "") === selectedCustomer);
+
+  const sum = {
+    "15W40": 0,
+    "TO50": 0,
+    "TO30": 0
+  };
+
+  for (const r of rows) {
+    if (sum[r.oil_type] != null) {
+      sum[r.oil_type] += Number(r.qty || 0);
+    }
+  }
+
+  if ($("sumOil15W40")) $("sumOil15W40").textContent = sum["15W40"];
+  if ($("sumOilTO50")) $("sumOilTO50").textContent = sum["TO50"];
+  if ($("sumOilTO30")) $("sumOilTO30").textContent = sum["TO30"];
+  if ($("planningOilRowCount")) $("planningOilRowCount").textContent = rows.length;
+
+  tb.innerHTML = rows.map(r => `
+    <tr class="hover:bg-[#fff9e6]">
+      <td class="p-3">${escapeHtml(r.plan_date)}</td>
+      <td class="p-3">${escapeHtml(r.customer)}</td>
+      <td class="p-3 font-mono font-black text-[#005596]">${escapeHtml(r.unit_code)}</td>
+      <td class="p-3">${escapeHtml(r.model)}</td>
+      <td class="p-3">${escapeHtml(r.ps_interval)}</td>
+      <td class="p-3 text-right font-black">${escapeHtml(r.days_to_plan ?? "")}</td>
+      <td class="p-3 font-black text-[#005596]">${escapeHtml(r.oil_type)}</td>
+      <td class="p-3 font-mono">${escapeHtml(r.part_number)}</td>
+      <td class="p-3 text-right font-black">${escapeHtml(r.qty)}</td>
+      <td class="p-3">${escapeHtml(r.unit)}</td>
+      <td class="p-3 text-right font-black">${escapeHtml(r.priority_score)}</td>
+      <td class="p-3">${priorityBadge(r.priority_label)}</td>
+      <td class="p-3">${leadTimeBadge(r.lead_time_status)}</td>
+      <td class="p-3">${recommendationBadge(r)}</td>
+    </tr>
+  `).join("");
+}
 
   $("statusBtn")?.addEventListener("click", (e) => {
   e.preventDefault();
@@ -1551,9 +1958,11 @@ layout: { padding: { left: 6, right: 40, top: 6, bottom: 0 } },
 
       show("btnNavData", !loggedOut);
       show("btnNavDash", !loggedOut);
+      show("btnNavPlanning", !loggedOut);
 
       show("dataSection", !loggedOut && activePage === "data");
       show("dashboardSection", !loggedOut && activePage === "dashboard");
+      show("planningSection", !loggedOut && activePage === "planning");
 
       if (loggedOut) {
         clearDataUI();
@@ -2111,6 +2520,12 @@ $("woListSearch")?.addEventListener("input", () => {
     $("btnReload").addEventListener("click", () => { loadRows(); });
     $("btnNavData").addEventListener("click", () => { location.hash = "#data"; });
     $("btnNavDash").addEventListener("click", () => { location.hash = "#dashboard"; });
+    $("btnNavPlanning").addEventListener("click", () => { location.hash = "#planning"; });
+    document.addEventListener("change", (e) => {
+  if (e.target?.id === "planningCustomerFilter") {
+    renderOilRequirementPlan();
+  }
+});
     $("cardNotCompleted").addEventListener("click", () => location.hash = "#wo-not-completed");
     $("cardCompleted").addEventListener("click", () => location.hash = "#wo-completed");
 
@@ -2174,17 +2589,28 @@ function routeFromHash() {
     return;
   }
 
+  if (h === "#planning") {
+  closeWOModal();
+  show("dashboardSection", false);
+  show("dataSection", false);
+  show("planningSection", true);
+  renderOilRequirementPlan();
+  return;
+}
+
   if (h === "#dashboard") {
-    show("dashboardSection", true);
-    show("dataSection", false);
-    closeWOModal();
-    renderDashboard();
-    return;
-  }
+  show("dashboardSection", true);
+  show("planningSection", false);
+  show("dataSection", false);
+  closeWOModal();
+  renderDashboard();
+  return;
+}
 
   if (h === "#wo-not-completed") {
-    show("dashboardSection", true);
-    show("dataSection", false);
+  show("dashboardSection", true);
+  show("planningSection", false);
+  show("dataSection", false);
     renderDashboard();
     openWOModal("not", "all");
 
@@ -2199,24 +2625,27 @@ function routeFromHash() {
   }
 
   if (h === "#wo-completed") {
-    show("dashboardSection", true);
-    show("dataSection", false);
+  show("dashboardSection", true);
+  show("planningSection", false);
+  show("dataSection", false);
     renderDashboard();
     openWOModal("completed");
     return;
   }
 
   if (h === "#wo-not-completed-progress") {
-    show("dashboardSection", true);
-    show("dataSection", false);
+  show("dashboardSection", true);
+  show("planningSection", false);
+  show("dataSection", false);
     renderDashboard();
     openWOModal("not", "progress");
     return;
   }
 
   if (h === "#wo-not-completed-noprogress") {
-    show("dashboardSection", true);
-    show("dataSection", false);
+  show("dashboardSection", true);
+  show("planningSection", false);
+  show("dataSection", false);
     renderDashboard();
     openWOModal("not", "noprogress");
     return;
@@ -2225,8 +2654,10 @@ function routeFromHash() {
   // default data
   closeWOModal();
   show("dashboardSection", false);
-  show("dataSection", true);
-  applyFilters();
+show("planningSection", false);
+show("dataSection", true);
+  renderOilRequirementPlan();
+applyFilters();
 }
 
 // pasang listener SEKALI aja
