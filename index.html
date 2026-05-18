@@ -56,22 +56,22 @@
         <div class="w-full flex items-center justify-between gap-2">
   <div class="flex items-center gap-2">
           <button id="btnNavData"
-            class="hidden px-4 py-2 rounded-full text-[10px] font-black uppercase border border-gray-600 text-gray-200
-                  hover:bg-gray-700 transition-all" type="button">
-            Data
-          </button>
+  class="hidden px-4 py-2 text-sm md:text-base font-black uppercase tracking-wide text-white
+        hover:text-[#ffcc00] transition-all" type="button">
+  Data
+</button>
 
           <button id="btnNavPlanning"
-  class="hidden px-4 py-2 rounded-full text-[10px] font-black uppercase border border-gray-600 text-gray-200
-        hover:bg-gray-700 transition-all" type="button">
+  class="hidden px-4 py-2 text-sm md:text-base font-black uppercase tracking-wide text-white
+        hover:text-[#ffcc00] transition-all" type="button">
   Planning
 </button>
 
           <button id="btnNavDash"
-            class="hidden px-4 py-2 rounded-full text-[10px] font-black uppercase border border-gray-600 text-gray-200
-                  hover:bg-gray-700 transition-all" type="button">
-            Dashboard
-          </button>
+  class="hidden px-4 py-2 text-sm md:text-base font-black uppercase tracking-wide text-white
+        hover:text-[#ffcc00] transition-all" type="button">
+  Dashboard
+</button>
           </div>
 
 <div class="flex items-center gap-2">
@@ -739,32 +739,85 @@ function qtyPressureScore(qty) {
   return 20;
 }
 
+function muUrgent(days) {
+  if (days <= 5) return 1;
+  if (days >= 30) return 0;
+  return (30 - days) / (30 - 5);
+}
+
+function muNormal(days) {
+  if (days <= 5 || days >= 60) return 0;
+  if (days === 30) return 1;
+
+  if (days > 5 && days < 30) {
+    return (days - 5) / (30 - 5);
+  }
+
+  if (days > 30 && days < 60) {
+    return (60 - days) / (60 - 30);
+  }
+
+  return 0;
+}
+
+function muSafe(days) {
+  if (days <= 30) return 0;
+  if (days >= 60) return 1;
+  return (days - 30) / (60 - 30);
+}
+
+function zHigh(alpha) {
+  return 60 + (alpha * 40); // 60–100
+}
+
+function zMedium(alpha) {
+  return 40 + (alpha * 30); // 40–70
+}
+
+function zLow(alpha) {
+  return 20 + (alpha * 30); // 20–50
+}
+
 function computeFuzzyPriority(row) {
   const days = daysUntilPlan(row.plan_date);
 
-  let score = 0;
+  if (days == null) {
+    return {
+      days_to_plan: null,
+      priority_score: 50,
+      priority_label: "UNKNOWN",
+      recommendation: "Cek tanggal plan"
+    };
+  }
+
+  const safeDays = Math.max(0, days);
+
+  // Fuzzy membership input
+  const a1 = muUrgent(safeDays);
+  const a2 = muNormal(safeDays);
+  const a3 = muSafe(safeDays);
+
+  // Rule Tsukamoto:
+  const z1 = zHigh(a1);
+  const z2 = zMedium(a2);
+  const z3 = zLow(a3);
+
+  const totalAlpha = a1 + a2 + a3;
+
+  let score = 50;
+  if (totalAlpha > 0) {
+    score = Math.round(((a1 * z1) + (a2 * z2) + (a3 * z3)) / totalAlpha);
+  }
+
   let label = "LOW";
   let recommendation = "Monitoring";
 
-  if (days == null) {
-    score = 50;
-    label = "UNKNOWN";
-    recommendation = "Cek tanggal plan";
-  } 
-  else if (days <= 7) {
-    score = 90;
+  if (score >= 75) {
     label = "HIGH";
     recommendation = "Segera cek stock / lakukan order";
-  } 
-  else if (days <= 21) {
-    score = 70;
+  } else if (score >= 50) {
     label = "MEDIUM";
     recommendation = "Pastikan ketersediaan sparepart";
-  } 
-  else {
-    score = 40;
-    label = "LOW";
-    recommendation = "Masih aman, monitor";
   }
 
   return {
@@ -2565,6 +2618,25 @@ document.addEventListener("keydown", (e) => {
       if (h === "#wo-completed") renderWOList("completed");
     });
 
+    function setActiveNav(active) {
+  const navs = [
+    { id: "btnNavData", key: "data" },
+    { id: "btnNavPlanning", key: "planning" },
+    { id: "btnNavDash", key: "dashboard" }
+  ];
+
+  navs.forEach(n => {
+    const el = $(n.id);
+    if (!el) return;
+
+    const isActive = n.key === active;
+
+    el.className = isActive
+  ? "px-8 py-2 rounded-full text-sm md:text-base font-black uppercase tracking-wide bg-[#ffcc00] text-black transition-all"
+  : "px-4 py-2 text-sm md:text-base font-black uppercase tracking-wide text-white hover:text-[#ffcc00] transition-all";
+  });
+}
+
 function routeFromHash() {
   const h = (location.hash || "#data").toLowerCase();
   const isLoggedIn = !$("btnLogout").classList.contains("hidden");
@@ -2590,6 +2662,7 @@ function routeFromHash() {
   }
 
   if (h === "#planning") {
+  setActiveNav("planning");
   closeWOModal();
   show("dashboardSection", false);
   show("dataSection", false);
@@ -2599,6 +2672,7 @@ function routeFromHash() {
 }
 
   if (h === "#dashboard") {
+  setActiveNav("dashboard");
   show("dashboardSection", true);
   show("planningSection", false);
   show("dataSection", false);
@@ -2608,6 +2682,7 @@ function routeFromHash() {
 }
 
   if (h === "#wo-not-completed") {
+      setActiveNav("dashboard");
   show("dashboardSection", true);
   show("planningSection", false);
   show("dataSection", false);
@@ -2625,6 +2700,7 @@ function routeFromHash() {
   }
 
   if (h === "#wo-completed") {
+      setActiveNav("dashboard");
   show("dashboardSection", true);
   show("planningSection", false);
   show("dataSection", false);
@@ -2634,6 +2710,7 @@ function routeFromHash() {
   }
 
   if (h === "#wo-not-completed-progress") {
+      setActiveNav("dashboard");
   show("dashboardSection", true);
   show("planningSection", false);
   show("dataSection", false);
@@ -2643,6 +2720,7 @@ function routeFromHash() {
   }
 
   if (h === "#wo-not-completed-noprogress") {
+      setActiveNav("dashboard");
   show("dashboardSection", true);
   show("planningSection", false);
   show("dataSection", false);
@@ -2652,11 +2730,11 @@ function routeFromHash() {
   }
 
   // default data
-  closeWOModal();
-  show("dashboardSection", false);
+  setActiveNav("data");
+closeWOModal();
+show("dashboardSection", false);
 show("planningSection", false);
 show("dataSection", true);
-  renderOilRequirementPlan();
 applyFilters();
 }
 
